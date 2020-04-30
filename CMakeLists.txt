@@ -17,7 +17,7 @@ find_package(Vulkan REQUIRED)
 
 add_executable(main "src/openwarp/main.cpp")
 
-target_compile_definitions(main PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+#target_compile_definitions(main PRIVATE VK_USE_PLATFORM_WIN32_KHR)
 target_include_directories(main PRIVATE Vulkan::Vulkan)
 target_link_libraries(main Vulkan::Vulkan)
 target_link_libraries(main glfw)
