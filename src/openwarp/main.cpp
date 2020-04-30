@@ -13,13 +13,20 @@
 #include <set>
 #include <cstdint>
 #include <algorithm>
+#include <cstring>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
-// The standard Khronos instance API validation layer.
+// The standard Khronos instance API validation layer,
+// along with older validation layers for compatibility with
+// Ubuntu 18.04's older Vulkan distribution.
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
+};
+
+const std::vector<const char*> fallbackValidationLayers = {
+    "VK_LAYER_LUNARG_standard_validation"
 };
 
 // Need the KHR_SWAPCHAIN_EXTENSION to use swapchains!
@@ -115,6 +122,7 @@ private:
 
     // Vulkan instance and device creation/management objects.
     VkInstance instance;
+    std::vector<const char*> activeValidationLayers;
     VkDebugUtilsMessengerEXT debugMessenger; // Vulkan object that handles debug callbacks
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; // The graphics card.
     VkDevice logicalDevice; // The logical device. (We'll just use one.)
@@ -550,6 +558,11 @@ private:
 
         if (enableValidationLayers && !checkValidationLayerSupport()) {
             throw std::runtime_error("Validation layers were requested that are not available on this system!");
+        } else if(enableValidationLayers){
+            std::cout << "Validation layers actively running on this application:" << std::endl;
+            for(auto const& layer : activeValidationLayers){
+                std::cout << "\t" << layer << std::endl;
+            }
         }
 
         VkApplicationInfo appInfo{};
@@ -567,8 +580,8 @@ private:
         // This is special debug messenger specifically to watch over instance creation/deletion.
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo;
         if (enableValidationLayers) {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-            createInfo.ppEnabledLayerNames = validationLayers.data();
+            createInfo.enabledLayerCount = static_cast<uint32_t>(activeValidationLayers.size());
+            createInfo.ppEnabledLayerNames = activeValidationLayers.data();
             std::cout << "Creating debugMessengerCreateInfo" << std::endl;
             populateDebugMessengerCreateInfo(debugMessengerCreateInfo); // Populate the debug messsenger struct.
             createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)(&debugMessengerCreateInfo); // Attach our debug messenger createInfo to the instance createInfo.
@@ -646,18 +659,52 @@ private:
 
         std::cout << "Available validation layers (" << layerCount << ") on this system: " << std::endl;
         for (const auto& layer : availableLayers) { std::cout << "\t" << layer.layerName << std::endl; }
-           
-        // Validate that all required validation layers are available.
-        for (const char* layerName : validationLayers) {
 
+
+        // See if all of our "preferred" validation layers are available.
+        bool preferredAvailable = checkIfAllLayersSupported(validationLayers, availableLayers);
+
+        
+        if(!preferredAvailable){
+            // If our preferred layers are not available, check the fallback layers.
+            bool fallbackAvailable = checkIfAllLayersSupported(fallbackValidationLayers, availableLayers);
+
+            // If even the fallback layers are not available, we fail the check entirely.
+            if(!fallbackAvailable){
+                return false;
+            } else {
+                // If the fallback is available, we copy 
+                // the fallback layers vector to the "active validation layers"
+                // vector for future bookkeeping.
+                std::cout << "WARNING: Using fallback validation layer! This is probably because you have " <<
+                                "an old Vulkan SDK without the newest validation layers." << std::endl;
+                activeValidationLayers = fallbackValidationLayers;
+                return true;
+            }
+        } else {
+
+            // Our preferred layers are available. Copy the preferred layers
+            // to the active layers vector and return true.
+            activeValidationLayers = validationLayers;
+            return true;
+        }
+    }
+
+    // Takes a vector of layer names, and vector of VkLayerProperties and verifies that all queried layers are present in the
+    // vector of available layers.
+    bool checkIfAllLayersSupported(const std::vector<const char*> queriedLayers, const std::vector<VkLayerProperties> availableLayers){
+        for (const char* queriedLayer : queriedLayers) {
             bool layerFoundFlag = false;
             for (const auto& availableLayer : availableLayers) {
-                if (strcmp(layerName, availableLayer.layerName) == 0) {
+                if (strcmp(queriedLayer, availableLayer.layerName) == 0) {
                     layerFoundFlag = true;
                     break;
                 }
             }
-            if (!layerFoundFlag) { return false;  }
+            // If we failed to find even one of the layers, we have failed.
+            if(layerFoundFlag == false){
+                return false;
+            }
         }
         return true;
     }
