@@ -15,7 +15,16 @@ add_subdirectory(include/glm)
 find_package(Vulkan REQUIRED)
 #find_package(GLM REQUIRED)
 
-add_executable(main "src/openwarp/main.cpp")
+
+
+set(SOURCES
+        src/openwarp/main.cpp
+        src/openwarp/vulkan_util.cpp
+        include/openwarp/vulkan_util.hpp
+)
+add_executable(main ${SOURCES})
+target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/openwarp)
+
 
 #target_compile_definitions(main PRIVATE VK_USE_PLATFORM_WIN32_KHR)
 target_include_directories(main PRIVATE Vulkan::Vulkan)
