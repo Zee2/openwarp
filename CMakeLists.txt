@@ -21,6 +21,8 @@ set(SOURCES
         include/openwarp/vulkan_util.hpp
 )
 
+set(CMAKE_BUILD_TYPE Debug)
+
 file(GLOB SHADERS src/openwarp/shaders/*.vert src/openwarp/shaders/*.frag)
 message(INFO ${SHADERS})
 

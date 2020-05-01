@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdint>
-#include <filesystem>
 
 #include <vulkan_util.hpp>
 
@@ -165,6 +164,7 @@ private:
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> imagesInFlight; // Keep track of which images are actually currently being rendered to.
     size_t currentFrame = 0;
+    float lastFrameTime = 0;
 
     void initWindow() {
         std::cout << "Initializing GLFW...." << std::endl;
@@ -416,7 +416,6 @@ private:
 
     void createGraphicsPipeline() {
 
-        std::cout << "Currently in " << std::filesystem::current_path() << ", reading shaders..." << std::endl;
         auto vertShaderCode = VulkanUtil::readFile("../src/openwarp/shaders/vert.spv");
         auto fragShaderCode = VulkanUtil::readFile("../src/openwarp/shaders/frag.spv");
 
@@ -662,7 +661,7 @@ private:
         SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
         VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats); // Image/texture format, etc
-        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes); // Vsync, etc
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_FIFO_KHR); // Vsync, etc
         VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities); // Size/resolution, etc
 
         // Good practice to request one more swapchain image than the image, to avoid unnecessary stalling.
@@ -1155,6 +1154,7 @@ private:
 
         vkQueuePresentKHR(presentQueue, &presentInfo);
 
+        lastFrameTime = glfwGetTime();
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
