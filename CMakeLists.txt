@@ -15,14 +15,16 @@ add_subdirectory(include/glm)
 find_package(Vulkan REQUIRED)
 #find_package(GLM REQUIRED)
 
-
-
 set(SOURCES
         src/openwarp/main.cpp
         src/openwarp/vulkan_util.cpp
         include/openwarp/vulkan_util.hpp
 )
-add_executable(main ${SOURCES})
+
+file(GLOB SHADERS src/openwarp/shaders/*.vert src/openwarp/shaders/*.frag)
+message(INFO ${SHADERS})
+
+add_executable(main ${SOURCES} ${SHADERS})
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/openwarp)
 
 

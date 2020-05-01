@@ -24,6 +24,8 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 // The standard Khronos instance API validation layer,
 // along with older validation layers for compatibility with
 // Ubuntu 18.04's older Vulkan distribution.
@@ -150,7 +152,19 @@ private:
     VkPipelineLayout pipelineLayout; // Graphics pipeline layout, contains uniform data
     VkPipeline graphicsPipeline; // The actual graphics pipeline itself
     
+    // Framebuffer resources
+    std::vector<VkFramebuffer> swapchainFramebuffers;
 
+    // Command resources
+    VkCommandPool commandPool;
+    std::vector<VkCommandBuffer> commandBuffers; // Command buffers are auto-freed when the commandPool is freed.
+
+    // Synchronization resources
+    std::vector<VkSemaphore> imageAvailableSemaphores; // Is the image available for rendering?
+    std::vector<VkSemaphore> renderFinishedSemaphores; // Are we done rendering to the image?
+    std::vector<VkFence> inFlightFences;
+    std::vector<VkFence> imagesInFlight; // Keep track of which images are actually currently being rendered to.
+    size_t currentFrame = 0;
 
     void initWindow() {
         std::cout << "Initializing GLFW...." << std::endl;
@@ -170,12 +184,171 @@ private:
         pickPhysicalDevice();
         createLogicalDevice();
         createSwapchain();
-        CreateImageViews();
-        CreateRenderPass();
-        CreateGraphicsPipeline();
+        createImageViews();
+        createRenderPass();
+        createGraphicsPipeline();
+        createFramebuffers();
+        createCommandPool();
+        createCommandBuffers();
+        createSynchronizationObjects();
     }
 
-    void CreateRenderPass() {
+    void createSynchronizationObjects() {
+        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+        // Initially all frames are not being drawn to,
+        // so all imagesInFlight fences are initialized to "no fence".
+        imagesInFlight.resize(swapchainImages.size(), VK_NULL_HANDLE);
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Create the fence in the "signalled" state
+
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            if (vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+                vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+                    vkCreateFence(logicalDevice, &fenceInfo,     nullptr, &inFlightFences[i])           != VK_SUCCESS){
+                throw std::runtime_error("Failed to create synchronization objects.");
+            }
+        }
+        
+    }
+
+    void createCommandBuffers() {
+        // We need to explicitly create one command buffer per framebuffer.
+        commandBuffers.resize(swapchainFramebuffers.size());
+
+        VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+        commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBufferAllocateInfo.commandPool = commandPool;
+        // PRIMARY command buffers cannot be called by other command buffers, while
+        // SECOND command buffers can be called by others (used to reuse commands)
+        commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        commandBufferAllocateInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+
+        if (vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to allocate command buffers!");
+        }
+        else {
+            std::cout << "Successfully created command buffers." << std::endl;
+        }
+
+        // We iterate through each command buffer and record the commands.
+        for (size_t i = 0; i < commandBuffers.size(); i++) {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+            // Possible values for beginInfo.flags can be:
+            //      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+            //          Will only be executed once after recording, then will be re-recorded.
+            //      VK_COMMAND_BUFFER_USAEG_RENDER_PASS_CONTINUE_BIT
+            //          Hints that this is a secondary command buffer that will be entirely
+            //          self-contained within a single render pass.
+            //      VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
+            //          Hints that this command buffer can be re-submitted while it is
+            //          already executing.
+            beginInfo.flags = 0; // Optional
+
+            // pInheritanceInfo indicates which primary command buffers
+            // can call this command buffer (if we are a secondary buffer)
+            beginInfo.pInheritanceInfo = nullptr; // Optional
+
+            if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to begin recording command buffer");
+            }
+
+            // Set up a render pass on the framebuffer[i]
+            VkRenderPassBeginInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = renderPass;
+            renderPassInfo.framebuffer = swapchainFramebuffers[i];
+
+            // We render across the entire framebuffer.
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = swapchainExtent;
+
+            // Set the clear values.
+            VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+            renderPassInfo.clearValueCount = 1;
+            renderPassInfo.pClearValues = &clearColor;
+
+
+            // ACTUAL COMMANDS!
+
+            // If we were going to call secondary command buffers inside this command buffer,
+            // we would use VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS.
+            vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+            // Bind the graphics pipeline 
+            vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+            vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+            vkCmdEndRenderPass(commandBuffers[i]);
+
+            if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to record a command buffer.");
+            }
+
+        }
+    }
+
+    void createCommandPool() {
+        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+
+        VkCommandPoolCreateInfo poolCreateInfo{};
+        poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        // This will be a command pool for graphics commands.
+        poolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+
+        // Possible values:
+        //      VK_COMMAND_POOL_CREATE_TRANSIENT_BIT
+        //          Hints that command buffers are re-recorded with new commands very often
+        //      VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+        //          Allows command buffers to be re-recorded individually;
+        //          without this, they must all be reset together.
+        poolCreateInfo.flags = 0; // Optional
+
+        if (vkCreateCommandPool(logicalDevice, &poolCreateInfo, nullptr, &commandPool) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create a command pool.");
+        }
+        else {
+            std::cout << "Successfully created a command pool." << std::endl;
+        }
+    }
+
+    void createFramebuffers() {
+        swapchainFramebuffers.resize(swapchainImageViews.size()); // One framebuffer per swapchain image.
+        for (size_t i = 0; i < swapchainImageViews.size(); i++) {
+            VkImageView attachments[] = {
+                swapchainImageViews[i]
+            };
+
+            VkFramebufferCreateInfo framebufferCreateInfo{};
+            framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferCreateInfo.renderPass = renderPass;
+            framebufferCreateInfo.attachmentCount = 1;
+            framebufferCreateInfo.pAttachments = attachments;
+            framebufferCreateInfo.width = swapchainExtent.width;
+            framebufferCreateInfo.height = swapchainExtent.height;
+            framebufferCreateInfo.layers = 1;
+
+            if (vkCreateFramebuffer(logicalDevice, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to create one of the framebuffers!");
+            }
+            else {
+                std::cout << "Successfully created framebuffer #" << i << std::endl;
+            }
+
+        }
+    }
+
+    void createRenderPass() {
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = swapchainImageFormat;
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT; // For multisampling.
@@ -213,13 +386,35 @@ private:
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
 
+        VkSubpassDependency dependency{};
+
+        // VK_SUBPASS_EXTERNAL refers to the implicit "subpass"
+        // that occurs before/after the overall render pass.
+        // So, src = EXTERNAL and dst = 0 is a dependency between the
+        // implicit subpass before the render pass, and our actual subpass.
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+
+        // This specifies that our subpass must wait for the COLOR_ATTACHMENT_OUTPUT,
+        // i.e. it must wait for the image to be available to render to.
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+
+        // Our subpass/operation is in the color attachment stage, and the accessMask
+        // is set to the color attachment bit because we will be writing to the color attachment.
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
+
         if (vkCreateRenderPass(logicalDevice, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
             throw std::runtime_error("failed to create render pass!");
         }
 
     }
 
-    void CreateGraphicsPipeline() {
+    void createGraphicsPipeline() {
 
         std::cout << "Currently in " << std::filesystem::current_path() << ", reading shaders..." << std::endl;
         auto vertShaderCode = VulkanUtil::readFile("../src/openwarp/shaders/vert.spv");
@@ -432,7 +627,7 @@ private:
 
     }
 
-    void CreateImageViews() {
+    void createImageViews() {
         // We assume swapchainImages has already been resized and filled appropriately.
         swapchainImageViews.resize(swapchainImages.size());
         for (size_t i = 0; i < swapchainImages.size(); i++) {
@@ -900,11 +1095,80 @@ private:
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+            drawFrame();
         }
+        // Wait for any async jobs that were submitted to finish before quitting.
+        vkDeviceWaitIdle(logicalDevice);
+    }
+
+    void drawFrame() {
+        // Wait for the fence before beginning.
+        vkWaitForFences(logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
+        uint32_t imageIndex;
+        // Determine which image is next in the swapchain.
+        vkAcquireNextImageKHR(logicalDevice, swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+        // Check if a previous frame is using the image we want to render to.
+        if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+            vkWaitForFences(logicalDevice, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+        }
+
+        // Mark the current swapchain image as being used by the current frame.
+        imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+
+        // Submit the command buffer for rendering.
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        // Specify the semaphore to wait on before rendering.
+        VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+        // Which stage should we sit in while waiting for the semaphore?
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+
+        VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        vkResetFences(logicalDevice, 1, &inFlightFences[currentFrame]);
+        // Submit the command buffer to the graphics queue.
+        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to submit draw command buffer!");
+        }
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores; // We have to wait on the renderFinished semaphore.
+
+        VkSwapchainKHR swapchainsToPresent[] = { swapchain };
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapchainsToPresent;
+        presentInfo.pImageIndices = &imageIndex; // Which image?
+        presentInfo.pResults = nullptr; // Can use to check the success of the presentation
+
+        vkQueuePresentKHR(presentQueue, &presentInfo);
+
+        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
     void cleanup() {
         std::cout << "Cleaning up" << std::endl;
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroySemaphore(logicalDevice, renderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(logicalDevice, imageAvailableSemaphores[i], nullptr);
+            vkDestroyFence(logicalDevice, inFlightFences[i], nullptr);
+        }
+        vkDestroyCommandPool(logicalDevice, commandPool, nullptr); // Will automatically clean up command buffers, too.
+        for (auto framebuffer : swapchainFramebuffers) {
+            vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
+        }
         vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
         vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
