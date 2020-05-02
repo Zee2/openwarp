@@ -12,16 +12,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - with:
-        submodules: true
-    - name: install packages
-      run: |
-        sudo apt-get update -m && sudo apt-get install xorg-dev libvulkan-dev
-    - name: Run cmake
-      uses: lukka/run-cmake@v0
-      with:
-        configurationRegexFilter: 'Linux-Release'
-    - name: Build executable
-      working-directory: build
-      run: make
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: install packages
+        run: |
+          sudo apt-get update -m && sudo apt-get install xorg-dev libvulkan-dev
+        shell: bash
+      - name: Run cmake
+        uses: lukka/run-cmake@v0
+      - name: Build executable
+        working-directory: build
+        run: make
