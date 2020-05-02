@@ -23,5 +23,5 @@ jobs:
         uses: lukka/run-cmake@v2
         with:
           buildDirectory: '${{runner.workspace}}/build'
-      - name: Build executable
-        run: 'cd ${{runner.workspace}}/build && make'
+      - name: Run
+        run: 'cd ${{runner.workspace}}/build && ./main'
