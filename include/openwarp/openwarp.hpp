@@ -66,7 +66,7 @@ private:
 
 class Openwarp::Surface{
 public:
-    VkResult Init(VkInstance instance, GLFWwindow* window);
+    VkResult Init(const Openwarp::VulkanInstance& instance, GLFWwindow* window);
     const VkSurfaceKHR& GetHandle() const { GET_IF_VALID(surfaceHandle) }
     VkResult Destroy();
 

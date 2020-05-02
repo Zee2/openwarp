@@ -20,6 +20,7 @@ set(SOURCES
         src/openwarp/OpenwarpApplication.cpp
         src/openwarp/vulkan_util.cpp
         src/openwarp/VulkanInstance.cpp
+        src/openwarp/Swapchain.cpp
         src/openwarp/OpenwarpObjects.cpp
         include/openwarp/vulkan_util.hpp
         include/openwarp/openwarp.hpp

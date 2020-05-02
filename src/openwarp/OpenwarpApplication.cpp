@@ -55,7 +55,7 @@ VkResult OpenwarpApplication::initVulkan(){
     }
 
     // Create the surface.
-    surface.Init(instance.GetHandle(), window);
+    surface.Init(instance, window);
 
     // Create the physical device.
     physicalDevice.Init(instance, surface, deviceExtensions);
