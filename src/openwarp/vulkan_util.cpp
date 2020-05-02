@@ -42,6 +42,7 @@ std::vector<const char*> Openwarp::OpenwarpUtils::getGlfwRequiredExtensions(){
 	for(auto ext : extensions){
 		std::cout << "\t" << ext << std::endl;
 	}
+	
 	return extensions;
 }
 
