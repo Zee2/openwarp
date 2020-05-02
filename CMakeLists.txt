@@ -16,9 +16,15 @@ find_package(Vulkan REQUIRED)
 #find_package(GLM REQUIRED)
 
 set(SOURCES
-        src/openwarp/main.cpp
+        src/openwarp/main2.cpp
+        src/openwarp/OpenwarpApplication.cpp
         src/openwarp/vulkan_util.cpp
+        src/openwarp/VulkanInstance.cpp
+        src/openwarp/Swapchain.cpp
+        src/openwarp/OpenwarpObjects.cpp
         include/openwarp/vulkan_util.hpp
+        include/openwarp/openwarp.hpp
+        include/openwarp/OpenwarpApplication.hpp
 )
 
 set(CMAKE_BUILD_TYPE Debug)

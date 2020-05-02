@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+# Build folder
+build/
+
+# Compiled shaders
+*.spv
+
+# VS Code configs
+.vscode/
+
+# Visual Studio metadata
+.vs/

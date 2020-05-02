@@ -18,7 +18,10 @@
 #include <cstring>
 #include <cstdint>
 
+#include "openwarp.hpp"
 #include <vulkan_util.hpp>
+
+using namespace Openwarp;
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -104,26 +107,6 @@ public:
     }
 
 private:
-
-    // Helper/container struct for keeping track
-    // of supported queue families for a particular device.
-    struct QueueFamilyIndices {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
-
-        // Checks whether all families have valid indices.
-        bool isComplete() {
-            return graphicsFamily.has_value() && presentFamily.has_value();
-        }
-    };
-
-    // Helper/container struct for keeping track of
-    // swapchain support details.
-    struct SwapChainSupportDetails {
-        VkSurfaceCapabilitiesKHR capabilities;
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> presentModes;
-    };
 
     GLFWwindow* window;
 
@@ -299,7 +282,7 @@ private:
     }
 
     void createCommandPool() {
-        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+        OpenwarpUtils::QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 
         VkCommandPoolCreateInfo poolCreateInfo{};
         poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -416,11 +399,11 @@ private:
 
     void createGraphicsPipeline() {
 
-        auto vertShaderCode = VulkanUtil::readFile("../src/openwarp/shaders/vert.spv");
-        auto fragShaderCode = VulkanUtil::readFile("../src/openwarp/shaders/frag.spv");
+        auto vertShaderCode = OpenwarpUtils::readFile("../src/openwarp/shaders/vert.spv");
+        auto fragShaderCode = OpenwarpUtils::readFile("../src/openwarp/shaders/frag.spv");
 
-        VkShaderModule vertShaderModule = VulkanUtil::createShaderModule(logicalDevice, vertShaderCode);
-        VkShaderModule fragShaderModule = VulkanUtil::createShaderModule(logicalDevice, fragShaderCode);
+        VkShaderModule vertShaderModule = OpenwarpUtils::createShaderModule(logicalDevice, vertShaderCode);
+        VkShaderModule fragShaderModule = OpenwarpUtils::createShaderModule(logicalDevice, fragShaderCode);
 
         VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
         vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -658,7 +641,7 @@ private:
     }
 
     void createSwapchain() {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+        VulkanUtil::SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
         VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats); // Image/texture format, etc
         VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, VK_PRESENT_MODE_FIFO_KHR); // Vsync, etc
@@ -687,7 +670,7 @@ private:
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         // We assume these are populated because we should have already checked the queue families of this device.
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        VulkanUtil::QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
         uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
         // If the graphics queue we're using is the same queue as the present queue,
@@ -785,10 +768,10 @@ private:
         return availableFormats[0];
     }
 
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {
+    VulkanUtil::SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {
 
         // Query basic swapchain capabilities.
-        SwapChainSupportDetails details;
+        VulkanUtil::SwapChainSupportDetails details;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
         // Query format count.
@@ -824,7 +807,7 @@ private:
     void createLogicalDevice() {
         std::cout << "Creating/allocating logical device object. " << std::endl;
 
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice, false);
+        VulkanUtil::QueueFamilyIndices indices = findQueueFamilies(physicalDevice, false);
 
         // We're going to create several queues; so we make a vector of createInfos.
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -912,13 +895,13 @@ private:
     // Function for determining whether a particular device is suitable for the application.
     bool isDeviceSuitable(VkPhysicalDevice device) {
 
-        QueueFamilyIndices indices = findQueueFamilies(device, true); // Fetches queue families.
+        VulkanUtil::QueueFamilyIndices indices = findQueueFamilies(device, true); // Fetches queue families.
 
         bool areExtensionsSupported = checkDeviceExtensionSupport(device);
 
         bool swapchainAdequate = false;
         if (areExtensionsSupported) {
-            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+            VulkanUtil::SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
             // For the swapchain to be sufficient, we need to have at least one supported format
             // and at least one supported presentation mode.
             swapchainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
@@ -950,8 +933,8 @@ private:
     // Find all command queue families supported by the indicated device.
     // Also verifies that the device supports a queue family with the
     // "VK_QUEUE_GRAPHICS_BIT" enabled. (Required for display, obviously!)
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, bool verbose = false) {
-        QueueFamilyIndices indices;
+    VulkanUtil::QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, bool verbose = false) {
+        VulkanUtil::QueueFamilyIndices indices;
 
         uint32_t queueFamilyCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);

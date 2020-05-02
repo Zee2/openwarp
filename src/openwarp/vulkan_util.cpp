@@ -2,7 +2,7 @@
 
 #include <vulkan_util.hpp>
 
-std::vector<char> VulkanUtil::readFile(const std::string& filename) {
+std::vector<char> Openwarp::OpenwarpUtils::readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 	if (!file.is_open()) {
 		throw std::runtime_error("Failed to read file.");
@@ -19,7 +19,7 @@ std::vector<char> VulkanUtil::readFile(const std::string& filename) {
 	return buffer;
 }
 
-VkShaderModule VulkanUtil::createShaderModule(const VkDevice device, const std::vector<char>& code) {
+VkShaderModule Openwarp::OpenwarpUtils::createShaderModule(const VkDevice device, const std::vector<char>& code) {
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = code.size();
@@ -32,3 +32,12 @@ VkShaderModule VulkanUtil::createShaderModule(const VkDevice device, const std::
 
 	return shaderModule;
 }
+
+std::vector<const char*> Openwarp::OpenwarpUtils::getGlfwRequiredExtensions(){
+	uint32_t glfwExtensionCount = 0;
+	const char** glfwExtensions;
+	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+	return extensions;
+}
+
