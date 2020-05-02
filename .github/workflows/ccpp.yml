@@ -30,4 +30,5 @@ jobs:
         with:
           buildDirectory: '${{runner.workspace}}/build'
       - name: Run
+        run: 'vulkaninfo'
         run: 'cd ${{runner.workspace}}/build && ./main'
