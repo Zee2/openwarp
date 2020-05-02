@@ -1,16 +1,15 @@
-name: C/C++ CI
+name: master build-vulkan
 
 on:
   push:
-    branches: [ master, development ]
-  pull_request:
     branches: [ master ]
 
 jobs:
-  build:
+  linux:
 
-    runs-on: ubuntu-latest
-
+    name: linux build
+    runs-on: ubuntu-18.04
+    
     steps:
       - uses: actions/checkout@v2
         with:
@@ -19,9 +18,7 @@ jobs:
         run: |
           sudo apt-get update -m && sudo apt-get install xorg-dev libvulkan-dev
         shell: bash
-      - name: Run cmake
+      - name: cmake build
         uses: lukka/run-cmake@v2
         with:
           buildDirectory: '${{runner.workspace}}/build'
-      - name: Run
-        run: 'cd ${{runner.workspace}}/build && ./main'

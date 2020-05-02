@@ -37,7 +37,12 @@ std::vector<const char*> Openwarp::OpenwarpUtils::getGlfwRequiredExtensions(){
 	uint32_t glfwExtensionCount = 0;
 	const char** glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	std::cout << "GLFW requires " << glfwExtensionCount << " extensions on this system: " << std::endl;
 	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+	for(auto ext : extensions){
+		std::cout << "\t" << ext << std::endl;
+	}
+	
 	return extensions;
 }
 

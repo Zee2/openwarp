@@ -82,7 +82,9 @@ VkResult VulkanInstance::Init(){
     createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
     createInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+    VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
+    if (result != VK_SUCCESS) {
+        std::cout << "Error code: " << result << std::endl;
         throw std::runtime_error("Failed to create Vulkan instance.");
     }
 
