@@ -44,8 +44,7 @@ class Openwarp::OpenwarpApplication{
         Openwarp::VulkanInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger; // Vulkan object that handles debug callbacks
         Openwarp::PhysicalDevice physicalDevice; // The graphics card.
-        VkDevice logicalDevice; // The logical device. (We'll just use one.)
-        VkQueue graphicsQueue; // Device queues are automatically cleaned up when the logical device is cleaned up.
+        Openwarp::LogicalDevice logicalDevice; // The logical device. (We'll just use one.)
 
         // Vulkan window/surface/swapchain creation objects.
         Openwarp::Surface surface;

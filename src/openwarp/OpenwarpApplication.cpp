@@ -58,12 +58,16 @@ VkResult OpenwarpApplication::initVulkan(){
     surface.Init(instance.GetHandle(), window);
 
     // Create the physical device.
-    physicalDevice.Init(instance.GetHandle(), surface.GetHandle(), deviceExtensions);
+    physicalDevice.Init(instance, surface, deviceExtensions);
+
+    // Create the logical device.
+    logicalDevice.Init(instance, physicalDevice, surface, deviceExtensions);
 
     return VK_SUCCESS;
 }
 
 VkResult OpenwarpApplication::cleanupVulkan(){
+    logicalDevice.Destroy();
     physicalDevice.Destroy();
     if(is_debug){
         OpenwarpUtils::DestroyDebugUtilsMessengerEXT(instance.GetHandle(), debugMessenger, nullptr);

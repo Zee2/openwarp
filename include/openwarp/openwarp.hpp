@@ -7,14 +7,20 @@
 #include <optional>
 #include <iostream>
 
+#define GET_IF_VALID(x) if(x != VK_NULL_HANDLE) { return x; } else { throw std::runtime_error("Attempted to access " #x " handle when none exists."); }
+
 namespace Openwarp{
     class OpenwarpApplication;
     class OpenwarpUtils;
+
+    // Vulkan containers.
 	class VulkanInstance;
     class Surface;
     class PhysicalDevice;
     class LogicalDevice;
+    class Swapchain;
     
+    // Helper structs.
     struct SwapChainSupportDetails;
     struct QueueFamilyIndices;
 }
@@ -43,10 +49,12 @@ class Openwarp::VulkanInstance{
 public:
 	VkResult Init(std::vector<const char*> requestedValidationLayers,std::vector<const char*> fallbackValidationLayers);
 	VkResult Init();
-    VkInstance GetHandle(){ return instance; }
+    const VkInstance& GetHandle() const { GET_IF_VALID(instance) }
+    bool GetDebug() const { return isDebugInstance; }
+    const std::vector<const char*>& GetValidationLayers() const {return activeValidationLayers; }
 	VkResult Destroy();
 private:
-    VkInstance instance; // The internal instance handle
+    VkInstance instance = VK_NULL_HANDLE; // The internal instance handle
 	bool isDebugInstance = false;
 	std::vector<const char*> activeValidationLayers;
     std::vector<const char*> getUsableValidationLayers(std::vector<const char*> requestedLayers, std::vector<const char*> fallbackLayers);
@@ -59,7 +67,7 @@ private:
 class Openwarp::Surface{
 public:
     VkResult Init(VkInstance instance, GLFWwindow* window);
-    VkSurfaceKHR GetHandle();
+    const VkSurfaceKHR& GetHandle() const { GET_IF_VALID(surfaceHandle) }
     VkResult Destroy();
 
 private:
@@ -69,13 +77,17 @@ private:
 
 class Openwarp::PhysicalDevice{
 public:
-    VkResult Init(VkInstance instance, VkSurfaceKHR targetSurface, std::vector<const char*> requiredExtensions);
-    VkPhysicalDevice GetHandle();
+    VkResult Init(const Openwarp::VulkanInstance& instance,
+                    const Openwarp::Surface& targetSurface,
+                    const std::vector<const char*>& requiredExtensions);
+    const VkPhysicalDevice& GetHandle() const { GET_IF_VALID(physicalDeviceHandle) }
+    const QueueFamilyIndices& GetFamilies() const { return familyIndices; }
     VkResult Destroy();
 
 private:
     VkPhysicalDevice physicalDeviceHandle = VK_NULL_HANDLE;
     VkInstance associatedInstance;
+    QueueFamilyIndices familyIndices;
     // Function for determining whether a particular device is suitable for the application.
     bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, std::vector<const char*> requiredExtensions);
     bool checkDeviceExtensionSupport(VkPhysicalDevice device, std::vector<const char*> requestedExtensions);
@@ -84,10 +96,44 @@ private:
 
 class Openwarp::LogicalDevice{
 public:
-    VkResult Init(VkInstance instance);
-    VkDevice GetHandle();
+    VkResult Init(const Openwarp::VulkanInstance& instance,
+                    const Openwarp::PhysicalDevice& physicalDevice,
+                    const Openwarp::Surface& surface,
+                    std::vector<const char*> deviceExtensions);
+
+    const VkDevice& GetHandle() const { GET_IF_VALID(logicalDeviceHandle) }
+    const VkQueue& GetGraphicsQueue() const { GET_IF_VALID(graphicsQueue) }
+    const VkQueue& GetPresentQueue() const { GET_IF_VALID(presentQueue) }
     VkResult Destroy();
 
 private:
     VkDevice logicalDeviceHandle;
-}
+    VkQueue graphicsQueue;
+    VkQueue presentQueue; 
+};
+
+class Openwarp::Swapchain{
+public:
+    VkResult Init(uint32_t width, uint32_t height,
+                    const Openwarp::VulkanInstance& instance,
+                    const Openwarp::LogicalDevice& logicalDevice,
+                    const Openwarp::Surface& surface,
+                    const Openwarp::PhysicalDevice& physicalDevice);
+    VkSwapchainKHR GetHandle() { GET_IF_VALID(swapchainHandle) }
+    VkResult Destroy();
+
+private:
+    VkSwapchainKHR swapchainHandle;
+    std::vector<VkImage> images;
+    VkExtent2D extent;
+    VkFormat format;
+    VkExtent2D chooseSwapExtent(uint32_t width, uint32_t height,
+                                const VkSurfaceCapabilitiesKHR& capabilities);
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes,
+                                        VkPresentModeKHR idealMode = VK_PRESENT_MODE_FIFO_KHR,
+                                        VkPresentModeKHR fallbackMode = VK_PRESENT_MODE_FIFO_KHR,
+                                        bool verbose = true);
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    Openwarp::SwapChainSupportDetails querySwapChainSupport(const VkPhysicalDevice& device, const VkSurfaceKHR& surface);
+    std::string presentModeToString(const VkPresentModeKHR& mode);
+};
