@@ -24,5 +24,4 @@ jobs:
         with:
           buildDirectory: '${{runner.workspace}}/build'
       - name: Build executable
-        working-directory: '${{runner.workspace}}/build'
-        run: make
+        run: 'cd ${{runner.workspace}}/build && make'
