@@ -20,7 +20,7 @@ jobs:
           sudo apt-get update -m && sudo apt-get install xorg-dev libvulkan-dev
         shell: bash
       - name: Run cmake
-        uses: lukka/run-cmake@v0
+        uses: lukka/run-cmake@v1
       - name: Build executable
         working-directory: build
         run: make
