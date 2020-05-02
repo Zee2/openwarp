@@ -7,10 +7,16 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  linux:
 
+    strategy:
+      fail-fast: false
+      matrix:
+        graphics: [vulkan, vulkan gles]
+
+    name: linux build
     runs-on: ubuntu-latest
-
+    
     steps:
       - uses: actions/checkout@v2
         with:
