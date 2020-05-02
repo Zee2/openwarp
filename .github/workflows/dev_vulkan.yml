@@ -1,0 +1,24 @@
+name: development build-vulkan
+
+on:
+  push:
+    branches: [ development ]
+
+jobs:
+  linux:
+
+    name: linux build
+    runs-on: ubuntu-18.04
+    
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: install packages
+        run: |
+          sudo apt-get update -m && sudo apt-get install xorg-dev libvulkan-dev
+        shell: bash
+      - name: cmake build
+        uses: lukka/run-cmake@v2
+        with:
+          buildDirectory: '${{runner.workspace}}/build'
