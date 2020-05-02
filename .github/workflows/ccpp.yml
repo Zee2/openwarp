@@ -9,13 +9,8 @@ on:
 jobs:
   linux:
 
-    strategy:
-      fail-fast: false
-      matrix:
-        graphics: [vulkan, vulkan gles]
-
     name: linux build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     
     steps:
       - uses: actions/checkout@v2
@@ -25,11 +20,7 @@ jobs:
         run: |
           sudo apt-get update -m && sudo apt-get install xorg-dev libvulkan-dev
         shell: bash
-      - name: Run cmake
+      - name: cmake build
         uses: lukka/run-cmake@v2
         with:
           buildDirectory: '${{runner.workspace}}/build'
-      - name: Dump vulkaninfo
-        run: 'vulkaninfo'
-      - name: Run
-        run: 'cd ${{runner.workspace}}/build && ./main'
