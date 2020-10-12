@@ -4,3 +4,6 @@
 [submodule "include/glfw"]
 	path = include/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "include/glew-cmake"]
+	path = include/glew-cmake
+	url = https://github.com/Perlmint/glew-cmake.git

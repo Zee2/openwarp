@@ -5,39 +5,27 @@ project(openwarp)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-
-add_subdirectory(include/glfw)
-add_subdirectory(include/glm)
-
-find_package(Vulkan REQUIRED)
-#find_package(GLM REQUIRED)
-
-set(SOURCES
-        src/openwarp/main2.cpp
+add_executable(main
+        src/openwarp/main.cpp
+        src/openwarp/openwarp.hpp
         src/openwarp/OpenwarpApplication.cpp
-        src/openwarp/vulkan_util.cpp
-        src/openwarp/VulkanInstance.cpp
-        src/openwarp/Swapchain.cpp
-        src/openwarp/OpenwarpObjects.cpp
-        include/openwarp/vulkan_util.hpp
-        include/openwarp/openwarp.hpp
-        include/openwarp/OpenwarpApplication.hpp
+        src/openwarp/OpenwarpApplication.hpp
 )
 
 set(CMAKE_BUILD_TYPE Debug)
 
-file(GLOB SHADERS src/openwarp/shaders/*.vert src/openwarp/shaders/*.frag)
-message(INFO ${SHADERS})
+set_property(TARGET main PROPERTY CXX_STANDARD 11)
+target_compile_options(main PRIVATE -Wall)
 
-add_executable(main ${SOURCES} ${SHADERS})
-target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/openwarp)
+# glfw
+add_subdirectory(include/glfw EXCLUDE_FROM_ALL)
+target_link_libraries(main PRIVATE glfw)
 
+# glew
+add_definitions(-DGLEW_STATIC)
+add_subdirectory(include/glew-cmake EXCLUDE_FROM_ALL)
+target_link_libraries(main PRIVATE libglew_static)
 
-#target_compile_definitions(main PRIVATE VK_USE_PLATFORM_WIN32_KHR)
-target_include_directories(main PRIVATE Vulkan::Vulkan)
-target_link_libraries(main Vulkan::Vulkan)
-target_link_libraries(main glfw)
-target_link_libraries(main glm)
+# glm
+add_subdirectory(include/glm EXCLUDE_FROM_ALL)
+target_link_libraries(main PRIVATE glm)

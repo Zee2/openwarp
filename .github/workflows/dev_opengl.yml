@@ -1,4 +1,4 @@
-name: development build-vulkan
+name: development build-gl
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
           submodules: true
       - name: install packages
         run: |
-          sudo apt-get update -m && sudo apt-get install xorg-dev libvulkan-dev
+          sudo apt-get update -m && sudo apt-get install xorg-dev
         shell: bash
       - name: cmake build
         uses: lukka/run-cmake@v2
