@@ -32,6 +32,9 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     glfwSetMouseButtonCallback(window, mouseClickCallback);
     glfwSetKeyCallback(window, keyCallback);
 
+    if (glfwRawMouseMotionSupported())
+        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
     glewExperimental = GL_TRUE;
     GLenum err = glewInit();
     if (err != GLEW_OK) {
@@ -64,10 +67,14 @@ void OpenwarpApplication::Run(){
             Eigen::Vector3f translation = {
                 (float)(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_A)),
                 (float)(glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_Q)),
-                (float)(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_S))
+                (float)(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_W))
             };
 
-            position += translation * (glfwGetTime() - lastFrameTime);
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            orientation = Eigen::AngleAxisf(xpos / WIDTH, -Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(ypos / HEIGHT, -Eigen::Vector3f::UnitX());
+
+            position += (orientation * translation) * (glfwGetTime() - lastFrameTime);
         }
 
         // Set up user view matrix.
@@ -101,7 +108,7 @@ OpenwarpApplication::~OpenwarpApplication(){
 int OpenwarpApplication::initGL(){
 
     // Vsync enabled.
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     glEnable              ( GL_DEBUG_OUTPUT );
     glDebugMessageCallback( MessageCallback, 0 );
@@ -112,11 +119,10 @@ int OpenwarpApplication::initGL(){
     demoscene = ObjScene(std::string(OBJ_DIR), "scene.obj");
 
     // Use GLM's perspective function; use Eigen for everything else
-    projection = glm::perspective(45.0f, (float)(WIDTH/HEIGHT), 0.1f, 100.0f);
+    projection = glm::perspective(45.0f, (float)(WIDTH)/(float)(HEIGHT), 0.1f, 100.0f);
 
     // Initialize and link shader program used to render demo scene
     demoShaderProgram = init_and_link("../resources/shaders/demo.vert", "../resources/shaders/demo.frag");
-    
 
     // Get demo shader attributes
     demoVertexPosAttr = glGetAttribLocation(demoShaderProgram, "vertexPosition");
