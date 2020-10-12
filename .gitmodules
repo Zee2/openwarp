@@ -7,3 +7,6 @@
 [submodule "include/glew-cmake"]
 	path = include/glew-cmake
 	url = https://github.com/Perlmint/glew-cmake.git
+[submodule "include/eigen"]
+	path = include/eigen
+	url = https://gitlab.com/libeigen/eigen.git

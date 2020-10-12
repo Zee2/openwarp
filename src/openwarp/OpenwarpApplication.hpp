@@ -1,7 +1,7 @@
 #pragma once
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
+#include <Eigen/Dense>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/vec4.hpp>
@@ -36,19 +36,52 @@ class Openwarp::OpenwarpApplication{
         // Application metadata
         bool is_debug;
 
-        // Application scene
+        // Application resources
         ObjScene demoscene;
+        glm::mat4x4 projection;
+        Eigen::Vector3f position = Eigen::Vector3f(0,0,0);
+        Eigen::Quaternionf orientation = Eigen::Quaternionf::Identity();
+        Eigen::Matrix4f renderedView;
 
         // GLFW resources
         GLFWwindow* window;
+        double lastFrameTime;
 
         // OpenGL resources
+
+        // Demo render resources
         GLuint renderTexture;
         GLuint renderFBO;
         GLuint renderDepthTarget;
+        GLint demoShaderProgram;
+        GLuint demoVAO;
+
+        // Demo shader attributes
+        GLuint demoVertexPosAttr;
+        GLuint demoModelViewAttr;
+        GLuint demoProjectionAttr;
 
         int initGL();
         int cleanupGL();
+
+        static void mouseClickCallback(GLFWwindow* window, int button, int action, int mods) {
+            if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            }
+        }
+
+        static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+            if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }
+        }
+
+        Eigen::Matrix4f createCameraMatrix(Eigen::Vector3f position, Eigen::Quaternionf orientation){
+            Eigen::Matrix4f cameraMatrix = Eigen::Matrix4f::Identity();
+            cameraMatrix.block<3,1>(0,3) = position;
+            cameraMatrix.block<3,3>(0,0) = orientation.toRotationMatrix();
+            return cameraMatrix;
+        }
 
         int createRenderTexture(GLuint* texture_handle, GLuint width, GLuint height){
 

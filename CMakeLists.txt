@@ -16,6 +16,8 @@ add_executable(main
         src/openwarp/util/obj.cpp
 )
 
+include_directories(include/eigen)
+
 set(CMAKE_BUILD_TYPE Debug)
 
 set_property(TARGET main PROPERTY CXX_STANDARD 11)
