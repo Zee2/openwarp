@@ -50,6 +50,9 @@ int OpenwarpApplication::initGL(){
     // Vsync enabled.
     glfwSwapInterval(1);
 
+    createRenderTexture(&renderTexture, WIDTH, HEIGHT);
+    createFBO(&renderTexture, &renderFBO, &renderDepthTarget, WIDTH, HEIGHT);
+
     return 0;
 }
 
