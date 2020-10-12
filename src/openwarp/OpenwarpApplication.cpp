@@ -11,6 +11,9 @@ using namespace Openwarp;
 
 #define OBJ_DIR "../resources/"
 
+static constexpr uint32_t MESH_WIDTH = 128;
+static constexpr uint32_t MESH_HEIGHT = 128;
+
 OpenwarpApplication::OpenwarpApplication(bool debug){
     std::cout << "Initializing Openwarp, debug = " << debug << std::endl;
     std::cout << "Initializing GLFW...." << std::endl;
@@ -47,57 +50,89 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
 
 void OpenwarpApplication::Run(){
     while(!glfwWindowShouldClose(window)) {
+        
+        processInput();
 
-        // Render to FBO.
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glUseProgram(demoShaderProgram);
-
-        glBindVertexArray(demoVAO);
-        glViewport(0, 0, WIDTH, HEIGHT);
-        glEnable(GL_CULL_FACE);
-        glEnable(GL_DEPTH_TEST);
-
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-
-        bool isFocused = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-
-        if(isFocused) {
-            // Query key input for translation input.
-            Eigen::Vector3f translation = {
-                (float)(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_A)),
-                (float)(glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_Q)),
-                (float)(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_W))
-            };
-
-            double xpos, ypos;
-            glfwGetCursorPos(window, &xpos, &ypos);
-            orientation = Eigen::AngleAxisf(xpos / WIDTH, -Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(ypos / HEIGHT, -Eigen::Vector3f::UnitX());
-
-            position += (orientation * translation) * (glfwGetTime() - lastFrameTime);
+        // If it's time to render a frame (based on the desired render frequency)
+        // we render, and increment the next render time.
+        if(glfwGetTime() >= nextRenderTime){
+            
+            renderScene();
+            nextRenderTime += renderInterval;
+            lastFrameTime = glfwGetTime();
         }
 
-        // Set up user view matrix.
-        renderedView = createCameraMatrix(position, orientation).inverse();
-
-        glUniformMatrix4fv(demoModelViewAttr, 1, GL_FALSE, (GLfloat*)(renderedView.data()));
-        glUniformMatrix4fv(demoProjectionAttr, 1, GL_FALSE, (GLfloat*)(&projection[0][0]));
-
-        // glBindTexture(GL_TEXTURE_2D, renderTexture);
-        // glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexture, 0);
-
-        glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        demoscene.Draw();
-
-        lastFrameTime = glfwGetTime();
+        // Reproject every frame.
+        // If we've already rendered this frame, this
+        // will not reproject. This is because we don't resample
+        // user input before reprojection; in an XR application,
+        // you would resample user pose every time before reprojection
+        // for the most up-to-date pose.
+        doReprojection();
+        
         glfwSwapBuffers(window);
-        glfwPollEvents();
     }
 }
 
+void OpenwarpApplication::processInput(){
+    glfwPollEvents();
+    bool isFocused = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+    if(isFocused) {
+        // Query key input for translation input.
+        Eigen::Vector3f translation = {
+            (float)(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_A)),
+            (float)(glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_Q)),
+            (float)(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_W))
+        };
 
+        // Query cursor position for rotation
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        orientation = Eigen::AngleAxisf(xpos / WIDTH, -Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(ypos / HEIGHT, -Eigen::Vector3f::UnitX());
+
+        // Alter position based on user orientation and input.
+        position += (orientation * translation) * (glfwGetTime() - lastFrameTime);
+    }
+}
+
+void OpenwarpApplication::doReprojection(){
+
+    glUseProgram(openwarpShaderProgram);
+
+    glUniformMatrix4fv(u_render_inverse_v, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
+
+    // Calculate a fresh camera matrix.
+    auto freshCameraMatrix = createCameraMatrix(position, orientation);
+    
+}
+
+void OpenwarpApplication::renderScene(){
+    // Render to FBO.
+    glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
+    glUseProgram(demoShaderProgram);
+
+    glBindVertexArray(demoVAO);
+    glViewport(0, 0, WIDTH, HEIGHT);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+
+    // Set up user view matrix.
+    // We save the camera matrix, so that when Openwarp runs, it can use both
+    // the rendered camera matrix, as well as the updated "fresh" camera matrix.
+    renderedCameraMatrix = createCameraMatrix(position, orientation);
+    renderedView = renderedCameraMatrix.inverse();
+
+    glUniformMatrix4fv(demoModelViewAttr, 1, GL_FALSE, (GLfloat*)(renderedView.data()));
+    glUniformMatrix4fv(demoProjectionAttr, 1, GL_FALSE, (GLfloat*)(projection.data()));
+
+    glBindTexture(GL_TEXTURE_2D, renderTexture);
+    glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexture, 0);
+
+    glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    demoscene.Draw();
+}
 
 OpenwarpApplication::~OpenwarpApplication(){
     cleanupGL();
@@ -118,8 +153,10 @@ int OpenwarpApplication::initGL(){
 
     demoscene = ObjScene(std::string(OBJ_DIR), "scene.obj");
 
-    // Use GLM's perspective function; use Eigen for everything else
-    projection = glm::perspective(45.0f, (float)(WIDTH)/(float)(HEIGHT), 0.1f, 100.0f);
+    projection = perspective(45.0, (double)(WIDTH)/(double)(HEIGHT), 0.1, 100.0);
+
+    // DEMO rendering initialization
+    ////////////////////////////////
 
     // Initialize and link shader program used to render demo scene
     demoShaderProgram = init_and_link("../resources/shaders/demo.vert", "../resources/shaders/demo.frag");
@@ -129,12 +166,43 @@ int OpenwarpApplication::initGL(){
     demoModelViewAttr = glGetUniformLocation(demoShaderProgram, "u_modelview");
     demoProjectionAttr = glGetUniformLocation(demoShaderProgram, "u_projection");
 
-    if(glGetError())
-        abort();
-
     // Create and bind global VAO object
     glGenVertexArrays(1, &demoVAO);
     glBindVertexArray(demoVAO);
+
+    // Openwarp rendering initialization
+    ////////////////////////////////
+
+    // Build the reprojection mesh for mesh-based Openwarp
+	BuildMesh(MESH_WIDTH, MESH_HEIGHT, mesh_indices, mesh_vertices);
+
+    // Build and link shaders.
+	openwarpShaderProgram = init_and_link("../resources/shaders/openwarp_mesh.vert", "../resources/shaders/openwarp_mesh.frag");
+
+    // Get the color + depth samplers
+    eye_sampler = glGetUniformLocation(openwarpShaderProgram, "Texture");
+    depth_sampler = glGetUniformLocation(openwarpShaderProgram, "_Depth");
+
+    // Get the warp matrix uniforms
+    // Inverse V and P matrices of the rendered pose
+    u_render_inverse_p = glGetUniformLocation(openwarpShaderProgram, "u_renderInverseP");
+    u_render_inverse_v = glGetUniformLocation(openwarpShaderProgram, "u_renderInverseV");
+    // VP matrix of the fresh pose
+    u_warp_vp = glGetUniformLocation(openwarpShaderProgram, "u_warpVP");
+
+    // Generate, bind, and fill mesh VBOs.
+    glGenBuffers(1, &mesh_vertices_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh_vertices_vbo);
+    glBufferData(GL_ARRAY_BUFFER, mesh_vertices.size() * sizeof(vertex_t), &mesh_vertices.at(0), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glGenBuffers(1, &mesh_indices_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_indices_vbo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh_indices.size() * sizeof(GLuint), &mesh_indices.at(0), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // Upload the inverse projection matrix to the openwarp-mesh program.
+    glUniformMatrix4fv(u_render_inverse_p, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
 
     return 0;
 }

@@ -22,8 +22,8 @@
 
 class Openwarp::OpenwarpApplication{
 
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
+    const uint32_t WIDTH = 1920;
+    const uint32_t HEIGHT = 1080;
 
     public:
         OpenwarpApplication(bool debug);
@@ -38,10 +38,14 @@ class Openwarp::OpenwarpApplication{
 
         // Application resources
         ObjScene demoscene;
-        glm::mat4x4 projection;
+        Eigen::Matrix4f projection;
         Eigen::Vector3f position = Eigen::Vector3f(0,0,0);
         Eigen::Quaternionf orientation = Eigen::Quaternionf::Identity();
         Eigen::Matrix4f renderedView;
+        Eigen::Matrix4f renderedCameraMatrix;
+
+        double nextRenderTime = 0.0f;
+        double renderInterval = (1/100.0f);
 
         // GLFW resources
         GLFWwindow* window;
@@ -61,8 +65,32 @@ class Openwarp::OpenwarpApplication{
         GLuint demoModelViewAttr;
         GLuint demoProjectionAttr;
 
+        // Reprojection resources
+        // Reprojection mesh CPU buffers and GPU VBO handles
+        std::vector<vertex_t> mesh_vertices;
+        GLuint mesh_vertices_vbo;
+        std::vector<GLuint> mesh_indices;
+        GLuint mesh_indices_vbo;
+
+        GLint openwarpShaderProgram;
+
+        // Color- and depth-samplers for openwarp
+        GLuint eye_sampler;
+        GLuint depth_sampler;
+
+        // Inverse V and P matrices of the rendered pose
+        GLuint u_render_inverse_p;
+        GLuint u_render_inverse_v;
+
+        // VP matrix of the fresh pose
+        GLuint u_warp_vp;
+
         int initGL();
         int cleanupGL();
+
+        void processInput();
+        void renderScene();
+        void doReprojection();
 
         static void mouseClickCallback(GLFWwindow* window, int button, int action, int mods) {
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -133,5 +161,93 @@ class Openwarp::OpenwarpApplication{
 
             // Unbind FBO.
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+
+        // Build a rectangular plane.
+        void BuildMesh(size_t width, size_t height, std::vector<GLuint>& indices, std::vector<vertex_t>& vertices){
+            
+            // Compute the size of the vectors we'll need to store the
+            // data, ahead of time.
+
+            // width and height are not in # of verts, but in # of faces.
+            size_t num_indices = 2 * 3 * width * height;
+            size_t num_vertices = (width + 1)*(height + 1);
+
+            // Size the vectors accordingly
+            indices.resize(num_indices);
+            vertices.resize(num_vertices);
+
+            // Build indices.
+            for ( int y = 0; y < height; y++ ) {
+                for ( int x = 0; x < width; x++ ) {
+
+                    const int offset = ( y * width + x ) * 6;
+
+                    indices[offset + 0] = (GLuint)( ( y + 0 ) * ( width + 1 ) + ( x + 0 ) );
+                    indices[offset + 1] = (GLuint)( ( y + 1 ) * ( width + 1 ) + ( x + 0 ) );
+                    indices[offset + 2] = (GLuint)( ( y + 0 ) * ( width + 1 ) + ( x + 1 ) );
+
+                    indices[offset + 3] = (GLuint)( ( y + 0 ) * ( width + 1 ) + ( x + 1 ) );
+                    indices[offset + 4] = (GLuint)( ( y + 1 ) * ( width + 1 ) + ( x + 0 ) );
+                    indices[offset + 5] = (GLuint)( ( y + 1 ) * ( width + 1 ) + ( x + 1 ) );
+                }
+            }
+
+            // Build vertices
+            for (size_t y = 0; y < height + 1; y++){
+                for (size_t x = 0; x < width + 1; x++){
+
+                    size_t index = y * ( width + 1 ) + x;
+                    // vertices[index].position[0] = ( -1.0f + 2.0f * ( (float)x / width ) );
+                    // vertices[index].position[1] = ( -1.0f + 2.0f * ( ( height - (float)y ) / height ));
+                    // vertices[index].position[2] = 0.0f;
+
+                    vertices[index].uv[0] = ((float)x / width);
+                    vertices[index].uv[1] = ((( height - (float)y) / height));
+
+                    if(x == 0) {
+                        vertices[index].uv[0] = -0.5f;
+                    }
+                    if(x == width) {
+                        vertices[index].uv[0] = 1.5f;
+                    }
+
+                    if(y == 0) {
+                        vertices[index].uv[1] = 1.5f;
+                    }
+                    if(y == height) {
+                        vertices[index].uv[1] = -0.5f;
+                    }
+
+
+                    
+                }
+            }
+        }
+
+        // Perspective matrix construction borrowed from
+        // http://spointeau.blogspot.com/2013/12/hello-i-am-looking-at-opengl-3.html
+        // I would use GLM, but I'd like to use Eigen for the rest of my computations.
+        Eigen::Matrix4f perspective
+        (
+            float fovy,
+            float aspect,
+            float zNear,
+            float zFar
+        )
+        {
+            assert(aspect > 0);
+            assert(zFar > zNear);
+
+            float radf = fovy * (M_PI / 180.0);
+
+            float tanHalfFovy = tan(radf / 2.0);
+            Eigen::Matrix4f res = Eigen::Matrix4f::Zero();
+            res(0,0) = 1.0 / (aspect * tanHalfFovy);
+            res(1,1) = 1.0 / (tanHalfFovy);
+            res(2,2) = - (zFar + zNear) / (zFar - zNear);
+            res(3,2) = - 1.0;
+            res(2,3) = - (2.0 * zFar * zNear) / (zFar - zNear);
+            return res;
         }
 };
