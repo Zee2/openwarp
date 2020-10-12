@@ -3,6 +3,8 @@
 #include "OpenwarpApplication.hpp"
 using namespace Openwarp;
 
+#define OBJ_DIR "../resources/"
+
 OpenwarpApplication::OpenwarpApplication(bool debug){
     std::cout << "Initializing Openwarp, debug = " << debug << std::endl;
     std::cout << "Initializing GLFW...." << std::endl;
@@ -52,6 +54,9 @@ int OpenwarpApplication::initGL(){
 
     createRenderTexture(&renderTexture, WIDTH, HEIGHT);
     createFBO(&renderTexture, &renderFBO, &renderDepthTarget, WIDTH, HEIGHT);
+
+    demoscene = ObjScene(std::string(OBJ_DIR), "scene.obj");
+
 
     return 0;
 }

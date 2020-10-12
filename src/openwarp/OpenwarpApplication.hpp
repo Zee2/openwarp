@@ -18,6 +18,7 @@
 #include <cstdint>
 
 #include "openwarp.hpp"
+#include "util/obj.hpp"
 
 class Openwarp::OpenwarpApplication{
 
@@ -34,6 +35,9 @@ class Openwarp::OpenwarpApplication{
 
         // Application metadata
         bool is_debug;
+
+        // Application scene
+        ObjScene demoscene;
 
         // GLFW resources
         GLFWwindow* window;

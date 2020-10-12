@@ -13,6 +13,7 @@ add_executable(main
         src/openwarp/util/lib/stb_image.h
         src/openwarp/util/lib/tiny_obj_loader.h
         src/openwarp/util/obj.hpp
+        src/openwarp/util/obj.cpp
 )
 
 set(CMAKE_BUILD_TYPE Debug)
