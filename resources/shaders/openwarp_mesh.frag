@@ -31,11 +31,18 @@ SOFTWARE.
 
 #version 450 
 
-layout(binding = 0) uniform highp sampler2D Texture;
-in mediump vec4 test;
+layout(binding = 1) uniform highp sampler2D Texture;
+layout(binding = 2) uniform highp sampler2D _Depth;
+in mediump vec4 worldspace;
 in mediump vec2 warpUv;
 out mediump vec4 outColor;
 void main()
 {
     outColor.rgba = texture(Texture, warpUv);
+
+    // Worldspace parameterization grid overlay.
+    // For debug + visualization only
+    vec3 worldspace_adjusted = vec3(1,1,1) * 0.02 + worldspace.xyz;
+    vec3 debugGrid = mod(worldspace_adjusted + 0.005*vec3(1,1,1), 0.05) - mod(worldspace_adjusted, 0.05);
+    outColor.rgb -= debugGrid * 2.0;
 }

@@ -24,6 +24,8 @@ class Openwarp::OpenwarpApplication{
 
     const uint32_t WIDTH = 1920;
     const uint32_t HEIGHT = 1080;
+    static constexpr uint32_t MESH_WIDTH = 128;
+    static constexpr uint32_t MESH_HEIGHT = 128;
 
     public:
         OpenwarpApplication(bool debug);
@@ -45,16 +47,17 @@ class Openwarp::OpenwarpApplication{
         Eigen::Matrix4f renderedCameraMatrix;
 
         double nextRenderTime = 0.0f;
-        double renderInterval = (1/100.0f);
+        double renderInterval = (1/10.0f);
 
         // GLFW resources
         GLFWwindow* window;
-        double lastFrameTime;
+        double lastInputTime;
 
         // OpenGL resources
 
         // Demo render resources
         GLuint renderTexture;
+        GLuint depthTexture;
         GLuint renderFBO;
         GLuint renderDepthTarget;
         GLint demoShaderProgram;
@@ -73,6 +76,8 @@ class Openwarp::OpenwarpApplication{
         GLuint mesh_indices_vbo;
 
         GLint openwarpShaderProgram;
+
+        GLuint openwarpVAO;
 
         // Color- and depth-samplers for openwarp
         GLuint eye_sampler;
@@ -111,20 +116,25 @@ class Openwarp::OpenwarpApplication{
             return cameraMatrix;
         }
 
-        int createRenderTexture(GLuint* texture_handle, GLuint width, GLuint height){
+        int createRenderTexture(GLuint* texture_handle, GLuint width, GLuint height, bool isDepth){
 
             // Create the texture handle.
             glGenTextures(1, texture_handle);
             glBindTexture(GL_TEXTURE_2D, *texture_handle);
 
-            // Set the texture parameters for the texture that the FBO will be
-            // mapped into.
+            // We use GL_NEAREST for depth textures for performance reasons.
+            // Linear filtering on depth textures is (apparently) costly.
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, isDepth ? GL_NEAREST : GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            if(isDepth) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+            }
+            else {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+            }
 
             glBindTexture(GL_TEXTURE_2D, 0); // unbind texture
 
@@ -135,7 +145,7 @@ class Openwarp::OpenwarpApplication{
             }
         }
 
-        void createFBO(GLuint* texture_handle, GLuint* fbo, GLuint* depth_target, GLuint width, GLuint height){
+        void createFBO(GLuint* texture_handle, GLuint* fbo, GLuint* depth_texture_handle, GLuint* depth_target, GLuint width, GLuint height){
             // Create a framebuffer to draw some things to the eye texture
             glGenFramebuffers(1, fbo);
             // Bind the FBO as the active framebuffer.
@@ -146,12 +156,18 @@ class Openwarp::OpenwarpApplication{
             glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
             glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-            // Bind render texture
-            printf("About to bind render texture, texture handle: %d\n", *texture_handle);
+            // Bind eyebuffer texture
+            printf("About to bind eyebuffer texture, texture handle: %d\n", *texture_handle);
 
             glBindTexture(GL_TEXTURE_2D, *texture_handle);
             glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *texture_handle, 0);
             glBindTexture(GL_TEXTURE_2D, 0);
+
+            // Attach depth texture to depth attachment.
+            glBindTexture(GL_TEXTURE_2D, *depth_texture_handle);
+            glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, *depth_texture_handle, 0);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
             // attach a renderbuffer to depth attachment point
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, *depth_target);
 
@@ -165,7 +181,7 @@ class Openwarp::OpenwarpApplication{
 
         // Build a rectangular plane.
         void BuildMesh(size_t width, size_t height, std::vector<GLuint>& indices, std::vector<vertex_t>& vertices){
-            
+            std::cout << "Generating reprojection mesh, size (" << width << ", " << height << ")" << std::endl;
             // Compute the size of the vectors we'll need to store the
             // data, ahead of time.
 
@@ -218,9 +234,6 @@ class Openwarp::OpenwarpApplication{
                     if(y == height) {
                         vertices[index].uv[1] = -0.5f;
                     }
-
-
-                    
                 }
             }
         }

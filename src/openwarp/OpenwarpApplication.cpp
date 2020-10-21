@@ -1,7 +1,7 @@
 
 #include "openwarp.hpp"
 #include "OpenwarpApplication.hpp"
-#include <Eigen/Dense>
+#include "Eigen/Dense"
 #include <string>
 #include <fstream>
 #include <glm/mat4x4.hpp>
@@ -10,9 +10,6 @@
 using namespace Openwarp;
 
 #define OBJ_DIR "../resources/"
-
-static constexpr uint32_t MESH_WIDTH = 128;
-static constexpr uint32_t MESH_HEIGHT = 128;
 
 OpenwarpApplication::OpenwarpApplication(bool debug){
     std::cout << "Initializing Openwarp, debug = " << debug << std::endl;
@@ -59,7 +56,7 @@ void OpenwarpApplication::Run(){
             
             renderScene();
             nextRenderTime += renderInterval;
-            lastFrameTime = glfwGetTime();
+            
         }
 
         // Reproject every frame.
@@ -91,30 +88,71 @@ void OpenwarpApplication::processInput(){
         orientation = Eigen::AngleAxisf(xpos / WIDTH, -Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(ypos / HEIGHT, -Eigen::Vector3f::UnitX());
 
         // Alter position based on user orientation and input.
-        position += (orientation * translation) * (glfwGetTime() - lastFrameTime);
+        position += (orientation * translation) * (glfwGetTime() - lastInputTime);
+
+        lastInputTime = glfwGetTime();
     }
 }
 
 void OpenwarpApplication::doReprojection(){
-
+    glBindVertexArray(openwarpVAO);
     glUseProgram(openwarpShaderProgram);
+    
 
+    // Upload inverse view matrix (camera matrix) of the rendered frame.
     glUniformMatrix4fv(u_render_inverse_v, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
 
     // Calculate a fresh camera matrix.
     auto freshCameraMatrix = createCameraMatrix(position, orientation);
+
+    // Compute VP matrix for fresh pose.
+    auto freshVP = projection * freshCameraMatrix.inverse();
+
+    // Upload the fresh VP matrix.
+    glUniformMatrix4fv(u_warp_vp, 1, GL_FALSE, (GLfloat*)freshVP.eval().data());
+
+    // Render directly to screen. If we were going to send this to a
+    // lens undistort shader, we'd create another FBO and render to that.
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glViewport(0,0,WIDTH,HEIGHT);
+    glDisable(GL_CULL_FACE);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    glBindBuffer(GL_ARRAY_BUFFER, mesh_vertices_vbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, position));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, uv));
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, renderTexture);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, depthTexture);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_indices_vbo);
+    glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, NULL);
     
 }
 
 void OpenwarpApplication::renderScene(){
     // Render to FBO.
-    glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
-    glUseProgram(demoShaderProgram);
-
     glBindVertexArray(demoVAO);
+    glUseProgram(demoShaderProgram);
+    glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
+    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    
     glViewport(0, 0, WIDTH, HEIGHT);
     glEnable(GL_CULL_FACE);
+    glDepthFunc(GL_LEQUAL);
     glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glClearDepth(1);
 
     // Set up user view matrix.
     // We save the camera matrix, so that when Openwarp runs, it can use both
@@ -127,11 +165,16 @@ void OpenwarpApplication::renderScene(){
 
     glBindTexture(GL_TEXTURE_2D, renderTexture);
     glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexture, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, depthTexture);
+    glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     demoscene.Draw();
+    glFlush();
 }
 
 OpenwarpApplication::~OpenwarpApplication(){
@@ -148,9 +191,14 @@ int OpenwarpApplication::initGL(){
     glEnable              ( GL_DEBUG_OUTPUT );
     glDebugMessageCallback( MessageCallback, 0 );
 
-    createRenderTexture(&renderTexture, WIDTH, HEIGHT);
-    createFBO(&renderTexture, &renderFBO, &renderDepthTarget, WIDTH, HEIGHT);
+    // Create both color and depth render textures
+    createRenderTexture(&renderTexture, WIDTH, HEIGHT, false);
+    createRenderTexture(&depthTexture, WIDTH, HEIGHT, true);
 
+    // Create FBO that will render to them!
+    createFBO(&renderTexture, &renderFBO, &depthTexture, &renderDepthTarget, WIDTH, HEIGHT);
+
+    // Load the .obj-file-based that will be rendered for the demo scene.
     demoscene = ObjScene(std::string(OBJ_DIR), "scene.obj");
 
     projection = perspective(45.0, (double)(WIDTH)/(double)(HEIGHT), 0.1, 100.0);
@@ -172,6 +220,9 @@ int OpenwarpApplication::initGL(){
 
     // Openwarp rendering initialization
     ////////////////////////////////
+
+    glGenVertexArrays(1, &openwarpVAO);
+    glBindVertexArray(openwarpVAO);
 
     // Build the reprojection mesh for mesh-based Openwarp
 	BuildMesh(MESH_WIDTH, MESH_HEIGHT, mesh_indices, mesh_vertices);
@@ -201,8 +252,14 @@ int OpenwarpApplication::initGL(){
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh_indices.size() * sizeof(GLuint), &mesh_indices.at(0), GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    // Upload the inverse projection matrix to the openwarp-mesh program.
+    // Upload the projection matrix (and inverse projection matrix) to the
+    // demo and openwarp-mesh programs. Should only need to do this once;
+    // we won't be changing this projection matrix at runtime (non-resizeable window)
+    glUseProgram(demoShaderProgram);
+    glUniformMatrix4fv(demoProjectionAttr, 1, GL_FALSE, (GLfloat*)(projection.data()));
+    glUseProgram(openwarpShaderProgram);
     glUniformMatrix4fv(u_render_inverse_p, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
+    glUseProgram(0);
 
     return 0;
 }

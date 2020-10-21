@@ -38,9 +38,9 @@ uniform highp mat4x4 u_warpVP;
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec2 in_uv;
 
-layout(binding = 0) uniform highp sampler2D Texture;
-layout(binding = 1) uniform highp sampler2D _Depth;
-out mediump vec4 test;
+layout(binding = 1) uniform highp sampler2D Texture;
+layout(binding = 2) uniform highp sampler2D _Depth;
+out mediump vec4 worldspace;
 out mediump vec2 warpUv;
 out gl_PerVertex { vec4 gl_Position; };
 
@@ -75,6 +75,6 @@ void main( void )
 
 	result /= abs(result.w);
 	gl_Position = result;
-	test = vec4(in_uv,1,1);
+	worldspace = vec4(frag_worldspace,1);
 	warpUv = in_uv;
 }
