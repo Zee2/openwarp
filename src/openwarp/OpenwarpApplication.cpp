@@ -53,8 +53,6 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     OpenwarpApplication::imgui_io = ImGui::GetIO();
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -73,8 +71,7 @@ void OpenwarpApplication::Run(){
         glfwPollEvents();
         OpenwarpApplication::imgui_io = ImGui::GetIO();
         
-        if(!OpenwarpApplication::imgui_io.WantCaptureMouse)
-            processInput();
+        processInput();
 
         // If it's time to render a frame (based on the desired render frequency)
         // we render, and increment the next render time.
@@ -103,14 +100,19 @@ void OpenwarpApplication::drawGUI(){
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::Begin("My First Tool");
 
-    // Display contents in a scrolling region
-    ImGui::TextColored(ImVec4(1,1,0,1), "Important Stuff");
-    ImGui::BeginChild("Scrolling");
-    for (int n = 0; n < 50; n++)
-        ImGui::Text("%04d: Some text", n);
-    ImGui::EndChild();
+    ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
+    ImGui::Begin("Reprojection configuration");
+    if (ImGui::CollapsingHeader("Edge bleed options", ImGuiTreeNodeFlags_DefaultOpen)){
+        ImGui::Text("Edge bleed radius");
+        ImGui::PushItemWidth(-1);
+        ImGui::SliderFloat("##1", &bleedRadius, 0.0f, 0.1f);
+        ImGui::Text("Edge bleed tolerance");
+        ImGui::SliderFloat("##2", &bleedTolerance, 0.0f, 0.1f);
+        ImGui::PopItemWidth();
+    }
+    ImGui::Checkbox("Show grid debug overlay", &showDebugGrid);
+    
     ImGui::End();
 
 
@@ -158,6 +160,10 @@ void OpenwarpApplication::doReprojection(){
     // Upload the fresh VP matrix.
     glUniformMatrix4fv(u_warp_vp, 1, GL_FALSE, (GLfloat*)freshVP.eval().data());
 
+    glUniform1f(u_bleedRadius, bleedRadius);
+    glUniform1f(u_bleedTolerance, bleedTolerance);
+    glUniform1f(u_debugOpacity, showDebugGrid ? 1.0f : 0.0f);
+
     // Render directly to screen. If we were going to send this to a
     // lens undistort shader, we'd create another FBO and render to that.
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -191,7 +197,6 @@ void OpenwarpApplication::renderScene(){
     glUseProgram(demoShaderProgram);
     glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
     // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
     
     glViewport(0, 0, WIDTH, HEIGHT);
     glEnable(GL_CULL_FACE);
@@ -287,6 +292,13 @@ int OpenwarpApplication::initGL(){
     u_render_inverse_v = glGetUniformLocation(openwarpShaderProgram, "u_renderInverseV");
     // VP matrix of the fresh pose
     u_warp_vp = glGetUniformLocation(openwarpShaderProgram, "u_warpVP");
+
+    // Mesh edge bleed parameters
+    u_bleedRadius = glGetUniformLocation(openwarpShaderProgram, "bleedRadius");
+    u_bleedTolerance = glGetUniformLocation(openwarpShaderProgram, "edgeTolerance");
+
+    // Mesh edge bleed parameters
+    u_debugOpacity = glGetUniformLocation(openwarpShaderProgram, "u_debugOpacity");
 
     // Generate, bind, and fill mesh VBOs.
     glGenBuffers(1, &mesh_vertices_vbo);

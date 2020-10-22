@@ -35,6 +35,9 @@ uniform highp mat4x4 u_renderInverseP;
 uniform highp mat4x4 u_renderInverseV;
 uniform highp mat4x4 u_warpVP;
 
+uniform mediump float bleedRadius;
+uniform mediump float edgeTolerance;
+
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec2 in_uv;
 
@@ -48,8 +51,6 @@ void main( void )
 {
 	float z = textureLod(_Depth, in_uv, 0.0).x * 2.0 - 1.0;
 
-	float bleedRadius = 0.01;
-	float edgeTolerance = 0.01f;
 	float outlier = min(              											
 					  min(														
 							textureLod(_Depth, in_uv - vec2(bleedRadius,0), 0).x, 

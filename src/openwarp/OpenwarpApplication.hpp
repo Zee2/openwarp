@@ -26,8 +26,8 @@
 
 class Openwarp::OpenwarpApplication{
 
-    const uint32_t WIDTH = 1920;
-    const uint32_t HEIGHT = 1080;
+    const uint32_t WIDTH = 1024;
+    const uint32_t HEIGHT = 1024;
     static constexpr uint32_t MESH_WIDTH = 128;
     static constexpr uint32_t MESH_HEIGHT = 128;
 
@@ -54,6 +54,11 @@ class Openwarp::OpenwarpApplication{
 
         double nextRenderTime = 0.0f;
         double renderInterval = (1/10.0f);
+
+        float bleedRadius = 0.03f;
+        float bleedTolerance = 0.01f;
+
+        bool showDebugGrid = false;
 
         // GLFW resources
         GLFWwindow* window;
@@ -86,12 +91,19 @@ class Openwarp::OpenwarpApplication{
         GLuint openwarpVAO;
 
         // Color- and depth-samplers for openwarp
-        GLuint eye_sampler;
-        GLuint depth_sampler;
+        GLint eye_sampler;
+        GLint depth_sampler;
 
         // Inverse V and P matrices of the rendered pose
-        GLuint u_render_inverse_p;
-        GLuint u_render_inverse_v;
+        GLint u_render_inverse_p;
+        GLint u_render_inverse_v;
+
+        // Mesh edge bleed parameters
+        GLint u_bleedRadius;
+        GLint u_bleedTolerance;
+
+        // Controls opacity of debug grid overlay
+        GLint u_debugOpacity;
 
         // VP matrix of the fresh pose
         GLuint u_warp_vp;

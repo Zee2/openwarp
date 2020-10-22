@@ -33,6 +33,9 @@ SOFTWARE.
 
 layout(binding = 1) uniform highp sampler2D Texture;
 layout(binding = 2) uniform highp sampler2D _Depth;
+
+uniform lowp float u_debugOpacity;
+
 in mediump vec4 worldspace;
 in mediump vec2 warpUv;
 out mediump vec4 outColor;
@@ -44,5 +47,5 @@ void main()
     // For debug + visualization only
     vec3 worldspace_adjusted = vec3(1,1,1) * 0.02 + worldspace.xyz;
     vec3 debugGrid = mod(worldspace_adjusted + 0.005*vec3(1,1,1), 0.05) - mod(worldspace_adjusted, 0.05);
-    outColor.rgb -= debugGrid * 2.0;
+    outColor.rgb -= debugGrid * 2.0 * u_debugOpacity;
 }
