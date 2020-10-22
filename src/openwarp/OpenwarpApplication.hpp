@@ -37,12 +37,13 @@ class Openwarp::OpenwarpApplication{
 
         void Run();
 
-        static ImGuiIO imgui_io;
+        static OpenwarpApplication* instance;
 
     private:
 
         // Application metadata
         bool is_debug;
+        ImGuiIO imgui_io;
 
         // Application resources
         ObjScene demoscene;
@@ -53,12 +54,14 @@ class Openwarp::OpenwarpApplication{
         Eigen::Matrix4f renderedCameraMatrix;
 
         double nextRenderTime = 0.0f;
-        double renderInterval = (1/10.0f);
+        double renderInterval = (1/5.0f);
 
         float bleedRadius = 0.03f;
         float bleedTolerance = 0.01f;
 
         bool showDebugGrid = false;
+
+        bool shouldRenderScene = true;
 
         // GLFW resources
         GLFWwindow* window;
@@ -117,7 +120,10 @@ class Openwarp::OpenwarpApplication{
         void doReprojection();
 
         static void mouseClickCallback(GLFWwindow* window, int button, int action, int mods) {
-            if (OpenwarpApplication::imgui_io.WantCaptureMouse) {
+            
+            if(OpenwarpApplication::instance != NULL &&
+                OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
+                
                 return;
             }
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -129,6 +135,14 @@ class Openwarp::OpenwarpApplication{
             
             if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }
+
+            if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+                if(OpenwarpApplication::instance != NULL &&
+                    !OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
+                    
+                    OpenwarpApplication::instance->shouldRenderScene = !OpenwarpApplication::instance->shouldRenderScene;
+                }
             }
         }
 

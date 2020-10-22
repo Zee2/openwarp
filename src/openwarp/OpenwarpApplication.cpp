@@ -11,9 +11,13 @@ using namespace Openwarp;
 
 #define OBJ_DIR "../resources/"
 
-ImGuiIO OpenwarpApplication::imgui_io;
+OpenwarpApplication* OpenwarpApplication::instance;
 
 OpenwarpApplication::OpenwarpApplication(bool debug){
+
+    // For static callbacks.
+    OpenwarpApplication::instance = this;
+
     std::cout << "Initializing Openwarp, debug = " << debug << std::endl;
     std::cout << "Initializing GLFW...." << std::endl;
     if(!glfwInit()) {
@@ -37,6 +41,7 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
 
     glfwSetMouseButtonCallback(window, mouseClickCallback);
     glfwSetKeyCallback(window, keyCallback);
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
 
     if (glfwRawMouseMotionSupported())
         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -52,7 +57,7 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    OpenwarpApplication::imgui_io = ImGui::GetIO();
+    imgui_io = ImGui::GetIO();
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -69,7 +74,7 @@ void OpenwarpApplication::Run(){
     while(!glfwWindowShouldClose(window)) {
 
         glfwPollEvents();
-        OpenwarpApplication::imgui_io = ImGui::GetIO();
+        imgui_io = ImGui::GetIO();
         
         processInput();
 
@@ -77,7 +82,10 @@ void OpenwarpApplication::Run(){
         // we render, and increment the next render time.
         if(glfwGetTime() >= nextRenderTime){
             
-            renderScene();
+            if(shouldRenderScene) {
+                renderScene();
+            }
+            
             nextRenderTime += renderInterval;
             
         }
@@ -106,9 +114,9 @@ void OpenwarpApplication::drawGUI(){
     if (ImGui::CollapsingHeader("Edge bleed options", ImGuiTreeNodeFlags_DefaultOpen)){
         ImGui::Text("Edge bleed radius");
         ImGui::PushItemWidth(-1);
-        ImGui::SliderFloat("##1", &bleedRadius, 0.0f, 0.1f);
+        ImGui::SliderFloat("##1", &bleedRadius, 0.0f, 0.05f);
         ImGui::Text("Edge bleed tolerance");
-        ImGui::SliderFloat("##2", &bleedTolerance, 0.0f, 0.1f);
+        ImGui::SliderFloat("##2", &bleedTolerance, 0.0f, 0.05f);
         ImGui::PopItemWidth();
     }
     ImGui::Checkbox("Show grid debug overlay", &showDebugGrid);
@@ -124,6 +132,12 @@ void OpenwarpApplication::processInput(){
     
     bool isFocused = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
     if(isFocused) {
+
+        // Toggle scene rendering
+        // if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        //     shouldRenderScene = !shouldRenderScene;
+        // }
+
         // Query key input for translation input.
         Eigen::Vector3f translation = {
             (float)(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_A)),
