@@ -11,6 +11,8 @@ using namespace Openwarp;
 
 #define OBJ_DIR "../resources/"
 
+ImGuiIO OpenwarpApplication::imgui_io;
+
 OpenwarpApplication::OpenwarpApplication(bool debug){
     std::cout << "Initializing Openwarp, debug = " << debug << std::endl;
     std::cout << "Initializing GLFW...." << std::endl;
@@ -19,6 +21,10 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     }
     std::cout << "Initializing application window...." << std::endl;
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    const char* glsl_version = "#version 130";
+
     window = glfwCreateWindow(WIDTH, HEIGHT, "Openwarp Demo", nullptr, nullptr);
     if(!window) {
         std::cerr << "Failed to create window." << std::endl;
@@ -42,13 +48,33 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
         throw std::runtime_error(std::string("Could initialize GLEW, error = ") +
                                 (const char*)glewGetErrorString(err));
     }
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    OpenwarpApplication::imgui_io = ImGui::GetIO();
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
     initGL();
 }
 
 void OpenwarpApplication::Run(){
     while(!glfwWindowShouldClose(window)) {
+
+        glfwPollEvents();
+        OpenwarpApplication::imgui_io = ImGui::GetIO();
         
-        processInput();
+        if(!OpenwarpApplication::imgui_io.WantCaptureMouse)
+            processInput();
 
         // If it's time to render a frame (based on the desired render frequency)
         // we render, and increment the next render time.
@@ -66,13 +92,34 @@ void OpenwarpApplication::Run(){
         // you would resample user pose every time before reprojection
         // for the most up-to-date pose.
         doReprojection();
+
+        drawGUI();
         
         glfwSwapBuffers(window);
     }
 }
 
+void OpenwarpApplication::drawGUI(){
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::Begin("My First Tool");
+
+    // Display contents in a scrolling region
+    ImGui::TextColored(ImVec4(1,1,0,1), "Important Stuff");
+    ImGui::BeginChild("Scrolling");
+    for (int n = 0; n < 50; n++)
+        ImGui::Text("%04d: Some text", n);
+    ImGui::EndChild();
+    ImGui::End();
+
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
 void OpenwarpApplication::processInput(){
-    glfwPollEvents();
+    
     bool isFocused = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
     if(isFocused) {
         // Query key input for translation input.

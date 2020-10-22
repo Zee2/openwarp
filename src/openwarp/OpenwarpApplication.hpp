@@ -7,6 +7,10 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -32,6 +36,8 @@ class Openwarp::OpenwarpApplication{
         ~OpenwarpApplication();
 
         void Run();
+
+        static ImGuiIO imgui_io;
 
     private:
 
@@ -93,17 +99,22 @@ class Openwarp::OpenwarpApplication{
         int initGL();
         int cleanupGL();
 
+        void drawGUI();
         void processInput();
         void renderScene();
         void doReprojection();
 
         static void mouseClickCallback(GLFWwindow* window, int button, int action, int mods) {
+            if (OpenwarpApplication::imgui_io.WantCaptureMouse) {
+                return;
+            }
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             }
         }
 
         static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+            
             if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             }

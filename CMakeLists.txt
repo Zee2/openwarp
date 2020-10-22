@@ -14,8 +14,19 @@ add_executable(main
         src/openwarp/util/lib/tiny_obj_loader.h
         src/openwarp/util/obj.hpp
         src/openwarp/util/obj.cpp
+        
+        # imgui does not support cmake... yet!
+        include/imgui/imgui_widgets.cpp
+        include/imgui/imgui_draw.cpp
+        include/imgui/imgui_impl_glfw.cpp
+        include/imgui/imgui_impl_opengl3.cpp
+        include/imgui/imgui.cpp
 )
 
+# imgui does not support cmake... yet!
+include_directories(include/imgui)
+
+# Header-only libraries
 include_directories(include/eigen)
 
 set(CMAKE_BUILD_TYPE Debug)
