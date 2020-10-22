@@ -28,8 +28,8 @@ class Openwarp::OpenwarpApplication{
 
     const uint32_t WIDTH = 1024;
     const uint32_t HEIGHT = 1024;
-    static constexpr uint32_t MESH_WIDTH = 128;
-    static constexpr uint32_t MESH_HEIGHT = 128;
+    static constexpr uint32_t MESH_WIDTH = 512;
+    static constexpr uint32_t MESH_HEIGHT = 512;
 
     public:
         OpenwarpApplication(bool debug);
@@ -45,6 +45,9 @@ class Openwarp::OpenwarpApplication{
         bool is_debug;
         ImGuiIO imgui_io;
 
+        bool showMeshConfig;
+        bool showRayConfig;
+
         // Application resources
         ObjScene demoscene;
         Eigen::Matrix4f projection;
@@ -54,14 +57,18 @@ class Openwarp::OpenwarpApplication{
         Eigen::Matrix4f renderedCameraMatrix;
 
         double nextRenderTime = 0.0f;
-        double renderInterval = (1/5.0f);
+        double renderInterval = (1/15.0f);
 
-        float bleedRadius = 0.03f;
-        float bleedTolerance = 0.01f;
+        float bleedRadius = 0.005f;
+        float bleedTolerance = 0.00f;
 
         bool showDebugGrid = false;
 
         bool shouldRenderScene = true;
+        bool shouldReproject = true;
+
+        double lastSwapTime;
+        double presentationFramerate;
 
         // GLFW resources
         GLFWwindow* window;
@@ -142,6 +149,14 @@ class Openwarp::OpenwarpApplication{
                     !OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
                     
                     OpenwarpApplication::instance->shouldRenderScene = !OpenwarpApplication::instance->shouldRenderScene;
+                }
+            }
+
+            if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+                if(OpenwarpApplication::instance != NULL &&
+                    !OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
+                    
+                    OpenwarpApplication::instance->shouldReproject = !OpenwarpApplication::instance->shouldReproject;
                 }
             }
         }

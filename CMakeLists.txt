@@ -21,6 +21,7 @@ add_executable(main
         include/imgui/imgui_impl_glfw.cpp
         include/imgui/imgui_impl_opengl3.cpp
         include/imgui/imgui.cpp
+        include/imgui/imgui_demo.cpp
 )
 
 # imgui does not support cmake... yet!

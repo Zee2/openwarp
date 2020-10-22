@@ -101,6 +101,8 @@ void OpenwarpApplication::Run(){
         drawGUI();
         
         glfwSwapBuffers(window);
+        presentationFramerate = 1.0/(glfwGetTime() - lastSwapTime);
+        lastSwapTime = glfwGetTime();
     }
 }
 
@@ -109,20 +111,61 @@ void OpenwarpApplication::drawGUI(){
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
-    ImGui::Begin("Reprojection configuration");
-    if (ImGui::CollapsingHeader("Edge bleed options", ImGuiTreeNodeFlags_DefaultOpen)){
-        ImGui::Text("Edge bleed radius");
-        ImGui::PushItemWidth(-1);
-        ImGui::SliderFloat("##1", &bleedRadius, 0.0f, 0.05f);
-        ImGui::Text("Edge bleed tolerance");
-        ImGui::SliderFloat("##2", &bleedTolerance, 0.0f, 0.05f);
-        ImGui::PopItemWidth();
+    // Menu Bar
+    if (ImGui::BeginMainMenuBar())
+    {
+        ImGui::Text("Openwarp");
+        if (ImGui::BeginMenu("Configuration"))
+        {
+            if (ImGui::MenuItem("Mesh-based"))
+                showMeshConfig = true;
+            if (ImGui::MenuItem("Raymarch-based"))
+                showRayConfig = true;
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Edit"))
+        {
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
     }
-    ImGui::Checkbox("Show grid debug overlay", &showDebugGrid);
-    
-    ImGui::End();
 
+    
+    if(showMeshConfig) {
+        ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
+        ImGui::Begin("Reprojection configuration", &showMeshConfig);
+        if (ImGui::CollapsingHeader("Edge bleed options", ImGuiTreeNodeFlags_DefaultOpen)){
+            ImGui::Text("Edge bleed radius");
+            ImGui::PushItemWidth(-1);
+            ImGui::SliderFloat("##1", &bleedRadius, 0.0f, 0.05f);
+            ImGui::Text("Edge bleed tolerance");
+            ImGui::SliderFloat("##2", &bleedTolerance, 0.0f, 0.05f);
+            ImGui::PopItemWidth();
+        }
+        ImGui::Checkbox("Show grid debug overlay", &showDebugGrid);
+    
+        ImGui::End();
+    }
+    
+    // Stats overlay
+    ImGuiWindowFlags overlay_flags = ImGuiWindowFlags_NoDecoration |
+                                    ImGuiWindowFlags_AlwaysAutoResize |
+                                    ImGuiWindowFlags_NoSavedSettings |
+                                    ImGuiWindowFlags_NoFocusOnAppearing |
+                                    ImGuiWindowFlags_NoNav |
+                                    ImGuiWindowFlags_NoMove;
+
+    ImGui::SetNextWindowPos(ImVec2(imgui_io.DisplaySize.x - 10.0f, 20.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+    ImGui::Begin("Stats", NULL, overlay_flags);
+    ImGui::Text("Current stats:");
+    ImGui::Separator();
+    ImGui::Text("Render framerate: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%.2f hz", (float)(1.0f/renderInterval));
+    ImGui::Text("Presentation framerate: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%.2f hz", (float)presentationFramerate);
+    ImGui::End();
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -166,7 +209,10 @@ void OpenwarpApplication::doReprojection(){
     glUniformMatrix4fv(u_render_inverse_v, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
 
     // Calculate a fresh camera matrix.
-    auto freshCameraMatrix = createCameraMatrix(position, orientation);
+    // If we've "disabled" reprojection (for demo purposes)
+    // we set the fresh camera matrix to the rendered matrix,
+    // which will disable reprojection.
+    auto freshCameraMatrix = shouldReproject ? createCameraMatrix(position, orientation) : renderedCameraMatrix;
 
     // Compute VP matrix for fresh pose.
     auto freshVP = projection * freshCameraMatrix.inverse();

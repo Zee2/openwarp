@@ -47,6 +47,7 @@ out mediump vec4 worldspace;
 out mediump vec2 warpUv;
 out gl_PerVertex { vec4 gl_Position; };
 
+
 void main( void )
 {
 	float z = textureLod(_Depth, in_uv, 0.0).x * 2.0 - 1.0;
