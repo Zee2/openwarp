@@ -96,7 +96,8 @@ void OpenwarpApplication::Run(){
         // user input before reprojection; in an XR application,
         // you would resample user pose every time before reprojection
         // for the most up-to-date pose.
-        doReprojection();
+        if (shouldReproject)
+            doReprojection();
 
         drawGUI();
         
@@ -129,7 +130,6 @@ void OpenwarpApplication::drawGUI(){
         }
         ImGui::EndMainMenuBar();
     }
-
     
     if(showMeshConfig) {
         ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
@@ -146,7 +146,7 @@ void OpenwarpApplication::drawGUI(){
     
         ImGui::End();
     }
-    
+
     // Stats overlay
     ImGuiWindowFlags overlay_flags = ImGuiWindowFlags_NoDecoration |
                                     ImGuiWindowFlags_AlwaysAutoResize |
@@ -176,11 +176,6 @@ void OpenwarpApplication::processInput(){
     bool isFocused = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
     if(isFocused) {
 
-        // Toggle scene rendering
-        // if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-        //     shouldRenderScene = !shouldRenderScene;
-        // }
-
         // Query key input for translation input.
         Eigen::Vector3f translation = {
             (float)(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) - (float)(glfwGetKey(window, GLFW_KEY_A)),
@@ -191,7 +186,7 @@ void OpenwarpApplication::processInput(){
         // Query cursor position for rotation
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
-        orientation = Eigen::AngleAxisf(xpos / WIDTH, -Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(ypos / HEIGHT, -Eigen::Vector3f::UnitX());
+        orientation = Eigen::AngleAxisf(((xpos - xpos_onfocus) + xpos_unfocus) / WIDTH, -Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(((ypos - ypos_onfocus) + ypos_unfocus) / HEIGHT, -Eigen::Vector3f::UnitX());
 
         // Alter position based on user orientation and input.
         position += (orientation * translation) * (glfwGetTime() - lastInputTime);
@@ -209,10 +204,7 @@ void OpenwarpApplication::doReprojection(){
     glUniformMatrix4fv(u_render_inverse_v, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
 
     // Calculate a fresh camera matrix.
-    // If we've "disabled" reprojection (for demo purposes)
-    // we set the fresh camera matrix to the rendered matrix,
-    // which will disable reprojection.
-    auto freshCameraMatrix = shouldReproject ? createCameraMatrix(position, orientation) : renderedCameraMatrix;
+    auto freshCameraMatrix = createCameraMatrix(position, orientation);
 
     // Compute VP matrix for fresh pose.
     auto freshVP = projection * freshCameraMatrix.inverse();
@@ -255,8 +247,12 @@ void OpenwarpApplication::renderScene(){
     // Render to FBO.
     glBindVertexArray(demoVAO);
     glUseProgram(demoShaderProgram);
-    glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // If reprojection is disabled, we render straight to the screen.
+    if (shouldReproject)
+        glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
+    else
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     
     glViewport(0, 0, WIDTH, HEIGHT);
     glEnable(GL_CULL_FACE);
@@ -273,14 +269,7 @@ void OpenwarpApplication::renderScene(){
     renderedView = renderedCameraMatrix.inverse();
 
     glUniformMatrix4fv(demoModelViewAttr, 1, GL_FALSE, (GLfloat*)(renderedView.data()));
-    glUniformMatrix4fv(demoProjectionAttr, 1, GL_FALSE, (GLfloat*)(projection.data()));
-
-    glBindTexture(GL_TEXTURE_2D, renderTexture);
-    glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexture, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindTexture(GL_TEXTURE_2D, depthTexture);
-    glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glUniformMatrix4fv(demoProjectionAttr, 1, GL_FALSE, (GLfloat*)(projection.data()));    
 
     glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

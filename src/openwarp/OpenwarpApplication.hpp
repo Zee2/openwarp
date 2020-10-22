@@ -45,6 +45,8 @@ class Openwarp::OpenwarpApplication{
         bool is_debug;
         ImGuiIO imgui_io;
 
+        double xpos_onfocus, ypos_onfocus, xpos_unfocus, ypos_unfocus;
+
         bool showMeshConfig;
         bool showRayConfig;
 
@@ -135,13 +137,28 @@ class Openwarp::OpenwarpApplication{
             }
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+                if(OpenwarpApplication::instance != NULL) {
+                    glfwGetCursorPos(window, &OpenwarpApplication::instance->xpos_onfocus, &OpenwarpApplication::instance->ypos_onfocus);
+                }
             }
         }
 
         static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
             
             if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+                if(OpenwarpApplication::instance != NULL) {
+
+                    // Do some math so that the view doesn't jump
+                    // when you re-focus the window.
+                    double xpos,ypos;
+                    auto instance = OpenwarpApplication::instance;
+                    glfwGetCursorPos(window, &xpos, &ypos);
+                    instance->xpos_unfocus = (xpos - instance->xpos_onfocus) + instance->xpos_unfocus;
+                    instance->ypos_unfocus = (ypos - instance->ypos_onfocus) + instance->ypos_unfocus;
+                }
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                
             }
 
             if (key == GLFW_KEY_R && action == GLFW_PRESS) {
@@ -208,9 +225,7 @@ class Openwarp::OpenwarpApplication{
             glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
             glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-            // Bind eyebuffer texture
-            printf("About to bind eyebuffer texture, texture handle: %d\n", *texture_handle);
-
+            // Attach color texture to color attachment.
             glBindTexture(GL_TEXTURE_2D, *texture_handle);
             glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *texture_handle, 0);
             glBindTexture(GL_TEXTURE_2D, 0);
@@ -220,11 +235,8 @@ class Openwarp::OpenwarpApplication{
             glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, *depth_texture_handle, 0);
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            // attach a renderbuffer to depth attachment point
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, *depth_target);
-
             if(glGetError()){
-                printf("displayCB, error after creating fbo\n");
+                abort();
             }
 
             // Unbind FBO.
