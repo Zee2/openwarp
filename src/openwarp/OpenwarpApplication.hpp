@@ -31,6 +31,8 @@ class Openwarp::OpenwarpApplication{
     static constexpr uint32_t MESH_WIDTH = 512;
     static constexpr uint32_t MESH_HEIGHT = 512;
 
+    
+
     public:
         OpenwarpApplication(bool debug);
         ~OpenwarpApplication();
@@ -91,35 +93,66 @@ class Openwarp::OpenwarpApplication{
         GLuint demoModelViewAttr;
         GLuint demoProjectionAttr;
 
-        // Reprojection resources
-        // Reprojection mesh CPU buffers and GPU VBO handles
-        std::vector<vertex_t> mesh_vertices;
-        GLuint mesh_vertices_vbo;
-        std::vector<GLuint> mesh_indices;
-        GLuint mesh_indices_vbo;
+        typedef struct owMeshProgram {
+            // Reprojection resources
+            // Reprojection mesh CPU buffers and GPU VBO handles
+            std::vector<vertex_t> mesh_vertices;
+            GLuint mesh_vertices_vbo;
+            std::vector<GLuint> mesh_indices;
+            GLuint mesh_indices_vbo;
 
-        GLint openwarpShaderProgram;
+            // Color- and depth-samplers for openwarp
+            GLint eye_sampler;
+            GLint depth_sampler;
 
-        GLuint openwarpVAO;
+            // Mesh edge bleed parameters
+            GLint u_bleedRadius;
+            GLint u_bleedTolerance;
 
-        // Color- and depth-samplers for openwarp
-        GLint eye_sampler;
-        GLint depth_sampler;
+            // Controls opacity of debug grid overlay
+            GLint u_debugOpacity;
 
-        // Inverse V and P matrices of the rendered pose
-        GLint u_render_inverse_p;
-        GLint u_render_inverse_v;
+            GLuint u_renderInverseP;
+            GLuint u_renderInverseV;
 
-        // Mesh edge bleed parameters
-        GLint u_bleedRadius;
-        GLint u_bleedTolerance;
+            // VP matrix of the fresh pose
+            GLuint u_warp_vp;
 
-        // Controls opacity of debug grid overlay
-        GLint u_debugOpacity;
+            GLint program;
+            GLuint vao;
+        } owMeshProgram;
 
-        // VP matrix of the fresh pose
-        GLuint u_warp_vp;
+        owMeshProgram meshProgram;
 
+        typedef struct owRayProgram {
+            // Reprojection resources
+            // Reprojection mesh CPU buffers and GPU VBO handles
+            std::vector<vertex_t> mesh_vertices;
+            GLuint mesh_vertices_vbo;
+            std::vector<GLuint> mesh_indices;
+            GLuint mesh_indices_vbo;
+
+            // Color- and depth-samplers for openwarp
+            GLint eye_sampler;
+            GLint depth_sampler;
+
+            GLuint u_renderP;
+            GLuint u_renderV;
+            GLuint u_renderInverseP;
+            GLuint u_renderInverseV;
+            GLuint u_warpInverseP;
+            GLuint u_warpInverseV;
+
+            GLuint u_power;
+            GLuint u_stepsize;
+            GLuint u_depthOffset;
+
+            GLint program;
+            GLuint vao;
+        } owRayProgram;
+
+        owRayProgram rayProgram;
+        
         int initGL();
         int cleanupGL();
 
