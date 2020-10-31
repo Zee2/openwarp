@@ -41,8 +41,10 @@ uniform highp mat4x4 u_renderV;
 uniform highp mat4x4 u_renderInverseP;
 uniform highp mat4x4 u_renderInverseV;
 uniform highp mat4x4 u_warpVP;
-uniform highp float u_warpInverseP;
-uniform highp float u_warpInverseV;
+uniform highp mat4x4 u_warpInverseP;
+uniform highp mat4x4 u_warpInverseV;
+
+uniform highp vec3 u_warpPos;
 
 uniform mediump float u_power;
 uniform mediump float u_stepSize;
@@ -54,24 +56,24 @@ out mediump vec4 outColor;
 
 
 vec3 ndcFromWorld(vec3 worldCoords, mat4x4 V, mat4x4 P){
-    vec4 homogeneous = float4(worldCoords,1.0f);
-    vec4 viewSpacePosition = mul(V, homogeneous);
-    vec4 clipSpacePosition = mul(P, viewSpacePosition);
+    vec4 homogeneous = vec4(worldCoords,1.0);
+    vec4 viewSpacePosition = V * homogeneous;
+    vec4 clipSpacePosition = P * viewSpacePosition;
 
     clipSpacePosition /= clipSpacePosition.w;
 
-    return clipSpacePosition;
+    return clipSpacePosition.xyz;
 }
 
 void main()
 {
-    float counter = 0.01f;
-    uint iter = 0;
+    float counter = 0.01;
+    int iter = 0;
 
     // float3 frag_cameraspace = mul(_freshInverseP, float4(i.uv * 2 - 1,0,1)).xyz; // "camera coords"
     // float3 V_worldspace = (mul(_freshInverseV, float4(frag_cameraspace,0)).xyz);
 
-    vec4 frag_cameraspace = u_warpInverseP * vec4(in.uv * 2.0 - 1.0, 0, 1);
+    vec4 frag_cameraspace = u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 0, 1);
     frag_cameraspace.z = 0;
     vec3 V_worldspace = (u_warpInverseV * frag_cameraspace).xyz;
 
@@ -108,9 +110,9 @@ void main()
     //     calcDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,(ndc + 1.) * 0.5f));
     // }
 
-    vec4 color = texture(Texture,i.uv);
+    vec4 color = texture(Texture,warpUv);
 
-    for(; iter < NUM_ITERS; iter++){
+    for(; iter < 64; iter++){
         
         // We calculate the point in the old pose's NDC space.
         ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
@@ -118,7 +120,7 @@ void main()
         // ndc2.x = clamp(ndc2.x,0,1);
         // ndc2.y = clamp(ndc2.y,0,1);
 
-        calcDepth = texture(_Depth,(ndc + 1.) * 0.5f) * 2.0 - 1.0;
+        calcDepth = texture(_Depth,(ndc.xy + 1.) * 0.5).r * 2.0 - 1.0;
         //calcDepth = (sphereCast(ndc, 0.01f) + sphereCast(ndc, -0.01f))/2.0f;
 
         // if(abs(calcDepth + _StepSize - LinearEyeDepth(ndc.z)) < _Power){
@@ -148,18 +150,18 @@ void main()
         // } else {
             counter += 0.01f;
             
-            lastStep = clamp(delta * _DepthOffset, -_StepSize, _StepSize);
+            lastStep = clamp(delta * u_depthOffset, -u_stepSize, u_stepSize);
             //lastStep = _StepSize;
             marchingPoint_worldspace += V_worldspace * lastStep;
             lastDepth = calcDepth;
-            float factor = clamp(1-pow(abs(delta), _Power),0,1);
+            float factor = clamp(1-pow(abs(delta), u_power),0,1);
             accum += factor;
-            color = lerp(color,tex2D(_PrimaryTex,(ndc + 1)*0.5f),factor);
+            color = mix(color,texture(Texture,(ndc.xy + 1)*0.5),factor);
         // }
         
     }
     // return tex2D(_PrimaryTex,(ndc+1)*0.5f);
-    return color;
+    outColor = color;
     // //return abs(delta);
     // if(abs(delta) > 0.5f) return 0;
 

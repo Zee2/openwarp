@@ -66,10 +66,15 @@ class Openwarp::OpenwarpApplication{
         float bleedRadius = 0.005f;
         float bleedTolerance = 0.00f;
 
+        float rayPower = 1.0f;
+        float rayStepSize = 0.01f;
+        float rayDepthOffset = 0.0f;
+
         bool showDebugGrid = false;
 
         bool shouldRenderScene = true;
         bool shouldReproject = true;
+        bool useRay = false;
 
         double lastSwapTime;
         double presentationFramerate;
@@ -144,7 +149,7 @@ class Openwarp::OpenwarpApplication{
             GLuint u_warpInverseV;
 
             GLuint u_power;
-            GLuint u_stepsize;
+            GLuint u_stepSize;
             GLuint u_depthOffset;
 
             GLint program;
@@ -152,14 +157,14 @@ class Openwarp::OpenwarpApplication{
         } owRayProgram;
 
         owRayProgram rayProgram;
-        
+
         int initGL();
         int cleanupGL();
 
         void drawGUI();
         void processInput();
         void renderScene();
-        void doReprojection();
+        void doReprojection(bool useRay);
 
         static void mouseClickCallback(GLFWwindow* window, int button, int action, int mods) {
             
@@ -207,6 +212,14 @@ class Openwarp::OpenwarpApplication{
                     !OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
                     
                     OpenwarpApplication::instance->shouldReproject = !OpenwarpApplication::instance->shouldReproject;
+                }
+            }
+
+            if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+                if(OpenwarpApplication::instance != NULL &&
+                    !OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
+                    
+                    OpenwarpApplication::instance->useRay = !OpenwarpApplication::instance->useRay;
                 }
             }
         }
