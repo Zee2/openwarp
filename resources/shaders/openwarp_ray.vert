@@ -50,6 +50,6 @@ out gl_PerVertex { vec4 gl_Position; };
 
 void main( void )
 {
-	gl_Position = vec4(in_position, 1);
+	gl_Position = vec4(in_uv * 2.0 - 1.0, 0.5, 1);
 	warpUv = in_uv;
 }

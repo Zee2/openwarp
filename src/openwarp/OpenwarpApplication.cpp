@@ -133,7 +133,7 @@ void OpenwarpApplication::drawGUI(){
     
     if(showMeshConfig) {
         ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
-        ImGui::Begin("Reprojection configuration", &showMeshConfig);
+        ImGui::Begin("Mesh configuration", &showMeshConfig);
         if (ImGui::CollapsingHeader("Edge bleed options", ImGuiTreeNodeFlags_DefaultOpen)){
             ImGui::Text("Edge bleed radius");
             ImGui::PushItemWidth(-1);
@@ -143,6 +143,21 @@ void OpenwarpApplication::drawGUI(){
             ImGui::PopItemWidth();
         }
         ImGui::Checkbox("Show grid debug overlay", &showDebugGrid);
+    
+        ImGui::End();
+    }
+
+    if(showRayConfig) {
+        ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
+        ImGui::Begin("Raymarch configuration", &showRayConfig);
+        ImGui::Text("Ray exponent power");
+        ImGui::PushItemWidth(-1);
+        ImGui::SliderFloat("##1", &rayPower, 0.0f, 3.0f);
+        ImGui::Text("Ray step size");
+        ImGui::SliderFloat("##2", &rayStepSize, 0.0f, 0.1f);
+        ImGui::Text("Ray depth offset");
+        ImGui::SliderFloat("##3", &rayDepthOffset, 1.0f, 2.0f);
+        ImGui::PopItemWidth();
     
         ImGui::End();
     }
@@ -197,28 +212,29 @@ void OpenwarpApplication::processInput(){
 
 void OpenwarpApplication::doReprojection(bool useRay){
 
-    // if(useRay) {
-    //     glBindVertexArray(rayProgram.vao);
-    //     glUseProgram(rayProgram.program);
+    if(useRay) {
+        glBindVertexArray(rayProgram.vao);
+        glUseProgram(rayProgram.program);
 
-    //     // Upload matrices of the rendered frame.
-    //     glUniformMatrix4fv(rayProgram.u_renderInverseV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
-    //     glUniformMatrix4fv(rayProgram.u_renderV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.inverse().eval().data()));
+        // Upload matrices of the rendered frame.
+        glUniformMatrix4fv(rayProgram.u_renderInverseV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
+        glUniformMatrix4fv(rayProgram.u_renderV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.inverse().eval().data()));
 
-    //     // Calculate a fresh camera matrix.
-    //     auto freshCameraMatrix = createCameraMatrix(position, orientation);
+        glUniform3fv(rayProgram.program, 1, position.data());
+        // Calculate a fresh camera matrix.
+        auto freshCameraMatrix = createCameraMatrix(position, orientation);
 
-    //     // Compute VP matrix for fresh pose.
-    //     auto freshVP = projection * freshCameraMatrix.inverse();
+        // Compute VP matrix for fresh pose.
+        auto freshVP = projection * freshCameraMatrix.inverse();
 
-    //     glUniformMatrix4fv(rayProgram.u_warpInverseV, 1, GL_FALSE, (GLfloat*)(freshCameraMatrix.data()));
+        glUniformMatrix4fv(rayProgram.u_warpInverseV, 1, GL_FALSE, (GLfloat*)(freshCameraMatrix.data()));
 
-    //     // Uploade parameter/config uniforms
-    //     glUniform1f(rayProgram.u_power, rayPower);
-    //     glUniform1f(rayProgram.u_stepSize, rayStepSize);
-    //     glUniform1f(rayProgram.u_depthOffset, rayDepthOffset);
+        // Uploade parameter/config uniforms
+        glUniform1f(rayProgram.u_power, rayPower);
+        glUniform1f(rayProgram.u_stepSize, rayStepSize);
+        glUniform1f(rayProgram.u_depthOffset, rayDepthOffset);
 
-    // } else {
+    } else {
         glBindVertexArray(meshProgram.vao);
         glUseProgram(meshProgram.program);
 
@@ -237,7 +253,7 @@ void OpenwarpApplication::doReprojection(bool useRay){
         glUniform1f(meshProgram.u_bleedRadius, bleedRadius);
         glUniform1f(meshProgram.u_bleedTolerance, bleedTolerance);
         glUniform1f(meshProgram.u_debugOpacity, showDebugGrid ? 1.0f : 0.0f);
-    // }
+    }
 
     // Render directly to screen. If we were going to send this to a
     // lens undistort shader, we'd create another FBO and render to that.
@@ -250,8 +266,7 @@ void OpenwarpApplication::doReprojection(bool useRay){
     glDepthMask(GL_TRUE);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    // glBindBuffer(GL_ARRAY_BUFFER, useRay ? rayProgram.mesh_vertices_vbo : meshProgram.mesh_vertices_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, meshProgram.mesh_vertices_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, useRay ? rayProgram.mesh_vertices_vbo : meshProgram.mesh_vertices_vbo);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, position));
@@ -263,11 +278,9 @@ void OpenwarpApplication::doReprojection(bool useRay){
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, depthTexture);
 
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, useRay ? rayProgram.mesh_vertices_vbo : meshProgram.mesh_vertices_vbo);
-    // glDrawElements(GL_TRIANGLES, useRay ? rayProgram.mesh_indices.size() : meshProgram.mesh_indices.size(), GL_UNSIGNED_INT, NULL);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, useRay ? rayProgram.mesh_indices_vbo : meshProgram.mesh_indices_vbo);
+    glDrawElements(GL_TRIANGLES, useRay ? rayProgram.mesh_indices.size() : meshProgram.mesh_indices.size(), GL_UNSIGNED_INT, NULL);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshProgram.mesh_vertices_vbo);
-    glDrawElements(GL_TRIANGLES, meshProgram.mesh_indices.size(), GL_UNSIGNED_INT, NULL);
     
 }
 
@@ -389,45 +402,46 @@ int OpenwarpApplication::initGL(){
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // Openwarp-ray rendering initialization
-    ////////////////////////////////
+    //////////////////////////////
 
-    // glGenVertexArrays(1, &rayProgram.vao);
-    // glBindVertexArray(rayProgram.vao);
+    glGenVertexArrays(1, &rayProgram.vao);
+    glBindVertexArray(rayProgram.vao);
 
-    // // Build the reprojection mesh for ray-based Openwarp
-    // // 2x2 quad
-	// BuildMesh(2, 2, rayProgram.mesh_indices, rayProgram.mesh_vertices);
+    // Build the reprojection mesh for ray-based Openwarp
+    // 2x2 quad
+	BuildMesh(2, 2, rayProgram.mesh_indices, rayProgram.mesh_vertices);
 
-    // // Build and link shaders for openwarp-ray.
-	// rayProgram.program = init_and_link("../resources/shaders/openwarp_ray.vert", "../resources/shaders/openwarp_ray.frag");
+    // Build and link shaders for openwarp-ray.
+	rayProgram.program = init_and_link("../resources/shaders/openwarp_ray.vert", "../resources/shaders/openwarp_ray.frag");
 
-    // // Get the color + depth samplers
-    // rayProgram.eye_sampler = glGetUniformLocation(rayProgram.program, "Texture");
-    // rayProgram.depth_sampler = glGetUniformLocation(rayProgram.program, "_Depth");
+    // Get the color + depth samplers
+    rayProgram.eye_sampler = glGetUniformLocation(rayProgram.program, "Texture");
+    rayProgram.depth_sampler = glGetUniformLocation(rayProgram.program, "_Depth");
 
-    // // Get the warp matrix uniforms
-    // // Inverse V and P matrices of the rendered pose
-    // rayProgram.u_renderInverseP = glGetUniformLocation(rayProgram.program, "u_renderInverseP");
-    // rayProgram.u_renderInverseV = glGetUniformLocation(rayProgram.program, "u_renderInverseV");
-    // rayProgram.u_renderP = glGetUniformLocation(rayProgram.program, "u_renderP");
-    // rayProgram.u_renderV = glGetUniformLocation(rayProgram.program, "u_renderV");
-    // rayProgram.u_warpInverseP = glGetUniformLocation(rayProgram.program, "u_warpInverseP");
-    // rayProgram.u_warpInverseV = glGetUniformLocation(rayProgram.program, "u_warpInverseV");
+    // Get the warp matrix uniforms
+    // Inverse V and P matrices of the rendered pose
+    rayProgram.u_renderInverseP = glGetUniformLocation(rayProgram.program, "u_renderInverseP");
+    rayProgram.u_renderInverseV = glGetUniformLocation(rayProgram.program, "u_renderInverseV");
+    rayProgram.u_renderP = glGetUniformLocation(rayProgram.program, "u_renderP");
+    rayProgram.u_renderV = glGetUniformLocation(rayProgram.program, "u_renderV");
+    rayProgram.u_warpInverseP = glGetUniformLocation(rayProgram.program, "u_warpInverseP");
+    rayProgram.u_warpInverseV = glGetUniformLocation(rayProgram.program, "u_warpInverseV");
+    rayProgram.u_warpPos = glGetUniformLocation(rayProgram.program, "u_warpPos");
 
-    // rayProgram.u_power = glGetUniformLocation(rayProgram.program, "u_power");
-    // rayProgram.u_stepSize = glGetUniformLocation(rayProgram.program, "u_stepSize");
-    // rayProgram.u_depthOffset = glGetUniformLocation(rayProgram.program, "u_depthOffset");
+    rayProgram.u_power = glGetUniformLocation(rayProgram.program, "u_power");
+    rayProgram.u_stepSize = glGetUniformLocation(rayProgram.program, "u_stepSize");
+    rayProgram.u_depthOffset = glGetUniformLocation(rayProgram.program, "u_depthOffset");
 
-    // // Generate, bind, and fill mesh VBOs.
-    // glGenBuffers(1, &rayProgram.mesh_vertices_vbo);
-    // glBindBuffer(GL_ARRAY_BUFFER, rayProgram.mesh_vertices_vbo);
-    // glBufferData(GL_ARRAY_BUFFER, rayProgram.mesh_vertices.size() * sizeof(vertex_t), &rayProgram.mesh_vertices.at(0), GL_STATIC_DRAW);
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // Generate, bind, and fill mesh VBOs.
+    glGenBuffers(1, &rayProgram.mesh_vertices_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, rayProgram.mesh_vertices_vbo);
+    glBufferData(GL_ARRAY_BUFFER, rayProgram.mesh_vertices.size() * sizeof(vertex_t), &rayProgram.mesh_vertices.at(0), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // glGenBuffers(1, &rayProgram.mesh_indices_vbo);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, rayProgram.mesh_indices_vbo);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, rayProgram.mesh_indices.size() * sizeof(GLuint), &rayProgram.mesh_indices.at(0), GL_STATIC_DRAW);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glGenBuffers(1, &rayProgram.mesh_indices_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, rayProgram.mesh_indices_vbo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, rayProgram.mesh_indices.size() * sizeof(GLuint), &rayProgram.mesh_indices.at(0), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // Upload the projection matrix (and inverse projection matrix) to the
     // demo and openwarp-mesh programs. Should only need to do this once;
@@ -436,10 +450,10 @@ int OpenwarpApplication::initGL(){
     glUniformMatrix4fv(demoProjectionAttr, 1, GL_FALSE, (GLfloat*)(projection.data()));
     glUseProgram(meshProgram.program);
     glUniformMatrix4fv(meshProgram.u_renderInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
-    // glUseProgram(rayProgram.program);
-    // glUniformMatrix4fv(rayProgram.u_renderInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
-    // glUniformMatrix4fv(rayProgram.u_renderP, 1, GL_FALSE, (GLfloat*)(projection.data()));
-    // glUniformMatrix4fv(rayProgram.u_warpInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
+    glUseProgram(rayProgram.program);
+    glUniformMatrix4fv(rayProgram.u_renderInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
+    glUniformMatrix4fv(rayProgram.u_renderP, 1, GL_FALSE, (GLfloat*)(projection.data()));
+    glUniformMatrix4fv(rayProgram.u_warpInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
     glUseProgram(0);
 
     return 0;

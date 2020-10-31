@@ -40,7 +40,6 @@ uniform highp mat4x4 u_renderP;
 uniform highp mat4x4 u_renderV;
 uniform highp mat4x4 u_renderInverseP;
 uniform highp mat4x4 u_renderInverseV;
-uniform highp mat4x4 u_warpVP;
 uniform highp mat4x4 u_warpInverseP;
 uniform highp mat4x4 u_warpInverseV;
 
@@ -73,9 +72,9 @@ void main()
     // float3 frag_cameraspace = mul(_freshInverseP, float4(i.uv * 2 - 1,0,1)).xyz; // "camera coords"
     // float3 V_worldspace = (mul(_freshInverseV, float4(frag_cameraspace,0)).xyz);
 
-    vec4 frag_cameraspace = u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 0, 1);
-    frag_cameraspace.z = 0;
-    vec3 V_worldspace = (u_warpInverseV * frag_cameraspace).xyz;
+    vec3 frag_cameraspace = (u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 0, 1)).xyz;
+
+    vec3 V_worldspace = (u_warpInverseV * vec4(frag_cameraspace,0)).xyz;
 
     vec3 marchingPoint_worldspace = u_warpPos;
 
@@ -93,26 +92,9 @@ void main()
     float delta2;
 
 
-    // return float4(_freshWorldPos,1);
-    // return float4(mul(_freshInverseV, float4(0,0,0,1)).xyz,1);
-
-
-    // float layerDepth = (V_worldspace * _StepSize).z;
-    // float currentLayerDepth = 0.0f;
-    
-    // float3 ndc = ndcFromWorld(marchingPoint_worldspace, _realV, _realP);
-    // float calcDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,(ndc + 1.) * 0.5f));
-
-    // while(calcDepth > LinearEyeDepth(ndc.z)){
-    //     counter += 0.01f;
-    //     marchingPoint_worldspace += V_worldspace * _StepSize;
-    //     ndc = ndcFromWorld(marchingPoint_worldspace, _realV, _realP);
-    //     calcDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,(ndc + 1.) * 0.5f));
-    // }
-
     vec4 color = texture(Texture,warpUv);
 
-    for(; iter < 64; iter++){
+    for(; iter < 128; iter++){
         
         // We calculate the point in the old pose's NDC space.
         ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
@@ -133,7 +115,7 @@ void main()
         //     marchingPoint_worldspace += V_worldspace * _StepSize;
         // }
 
-        marchDepth = ((ndc.z + 1.0f) * 0.5f);
+        marchDepth = ndc.z;
 
         delta = calcDepth - marchDepth;
 
@@ -161,7 +143,8 @@ void main()
         
     }
     // return tex2D(_PrimaryTex,(ndc+1)*0.5f);
-    outColor = color;
+    outColor = mix(color, vec4(ndc.xy, 1, 1), step(warpUv.x, 0.1));
+    // outColor = vec4(V_worldspace,1);
     // //return abs(delta);
     // if(abs(delta) > 0.5f) return 0;
 
