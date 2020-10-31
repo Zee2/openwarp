@@ -50,33 +50,6 @@ out gl_PerVertex { vec4 gl_Position; };
 
 void main( void )
 {
-	float z = textureLod(_Depth, in_uv, 0.0).x * 2.0 - 1.0;
-
-	float outlier = min(              											
-					  min(														
-							textureLod(_Depth, in_uv - vec2(bleedRadius,0), 0).x, 
-							textureLod(_Depth, in_uv + vec2(bleedRadius,0), 0).x  
-					  ),														
-					  min(
-							textureLod(_Depth, in_uv - vec2(0,bleedRadius), 0).x, 
-							textureLod(_Depth, in_uv + vec2(0,bleedRadius), 0).x  
-					  )
-					);
-	outlier = outlier * 2.0 - 1.0;
-	if(z - outlier > edgeTolerance){
-		z = outlier;
-	}
-	z = min(0.99, z);
-
-	vec4 clipSpacePosition = vec4(in_uv * 2.0 - 1.0, z, 1.0);
-
-	vec4 frag_viewspace = u_renderInverseP * clipSpacePosition;
-	frag_viewspace /= frag_viewspace.w;
-	vec3 frag_worldspace = (u_renderInverseV * frag_viewspace).xyz;
-	vec4 result = u_warpVP * vec4(frag_worldspace, 1.0);
-
-	result /= abs(result.w);
-	gl_Position = result;
-	worldspace = vec4(frag_worldspace,1);
+	gl_Position = vec4(in_uv * 2.0 - 1.0, 0.5, 1);
 	warpUv = in_uv;
 }
