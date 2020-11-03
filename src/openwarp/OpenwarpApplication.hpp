@@ -24,6 +24,10 @@
 #include "openwarp.hpp"
 #include "util/obj.hpp"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 class Openwarp::OpenwarpApplication{
 
     const uint32_t WIDTH = 1024;
