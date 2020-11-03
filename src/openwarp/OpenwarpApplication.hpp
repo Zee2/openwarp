@@ -70,7 +70,7 @@ class Openwarp::OpenwarpApplication{
         float bleedTolerance = 0.00f;
 
         float rayPower = 1.0f;
-        float rayStepSize = 0.01f;
+        float rayStepSize = 0.1f;
         float rayDepthOffset = 1.0f;
 
         bool showDebugGrid = false;

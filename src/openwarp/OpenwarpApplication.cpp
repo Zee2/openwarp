@@ -152,9 +152,9 @@ void OpenwarpApplication::drawGUI(){
         ImGui::Begin("Raymarch configuration", &showRayConfig);
         ImGui::Text("Ray exponent power");
         ImGui::PushItemWidth(-1);
-        ImGui::SliderFloat("##1", &rayPower, 0.0f, 3.0f);
+        ImGui::SliderFloat("##1", &rayPower, 0.0f, 1.0f);
         ImGui::Text("Ray step size");
-        ImGui::SliderFloat("##2", &rayStepSize, 0.0f, 0.1f);
+        ImGui::SliderFloat("##2", &rayStepSize, 0.0f, 5.0f);
         ImGui::Text("Ray depth offset");
         ImGui::SliderFloat("##3", &rayDepthOffset, 1.0f, 2.0f);
         ImGui::PopItemWidth();
@@ -220,7 +220,7 @@ void OpenwarpApplication::doReprojection(bool useRay){
         glUniformMatrix4fv(rayProgram.u_renderInverseV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
         glUniformMatrix4fv(rayProgram.u_renderV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.inverse().eval().data()));
 
-        glUniform3fv(rayProgram.program, 1, position.data());
+        glUniform3fv(rayProgram.u_warpPos, 1, position.data());
         // Calculate a fresh camera matrix.
         auto freshCameraMatrix = createCameraMatrix(position, orientation);
 

@@ -43,7 +43,7 @@ uniform highp mat4x4 u_renderInverseV;
 uniform highp mat4x4 u_warpInverseP;
 uniform highp mat4x4 u_warpInverseV;
 
-uniform highp vec3 u_warpPos;
+uniform mediump vec3 u_warpPos;
 
 uniform mediump float u_power;
 uniform mediump float u_stepSize;
@@ -72,11 +72,13 @@ void main()
     // float3 frag_cameraspace = mul(_freshInverseP, float4(i.uv * 2 - 1,0,1)).xyz; // "camera coords"
     // float3 V_worldspace = (mul(_freshInverseV, float4(frag_cameraspace,0)).xyz);
 
-    vec3 frag_cameraspace = (u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 0, 1)).xyz;
+    vec3 frag_cameraspace = (u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 1, 1)).xyz;
 
     vec3 V_worldspace = (u_warpInverseV * vec4(frag_cameraspace,0)).xyz;
 
-    vec3 marchingPoint_worldspace = u_warpPos;
+    // V_worldspace = (u_warpInverseV * u_warpInverseP * vec4(warpUv * 2.0 - 1.0, -1.0, 1)).xyz;
+
+    vec3 marchingPoint_worldspace = u_warpPos + V_worldspace;
 
     vec3 ndc;
     vec3 ndc2;
@@ -93,8 +95,9 @@ void main()
 
 
     vec4 color = texture(Texture,warpUv);
+    vec3 og_ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
 
-    for(; iter < 128; iter++){
+    for(; iter < 512; iter++){
         
         // We calculate the point in the old pose's NDC space.
         ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
@@ -133,20 +136,27 @@ void main()
             counter += 0.01f;
             
             lastStep = clamp(delta * u_depthOffset, -u_stepSize, u_stepSize);
-            //lastStep = _StepSize;
+            lastStep = u_stepSize;
             marchingPoint_worldspace += V_worldspace * lastStep;
             lastDepth = calcDepth;
             float factor = clamp(1-pow(abs(delta), u_power),0,1);
             accum += factor;
             color = mix(color,texture(Texture,(ndc.xy + 1)*0.5),factor);
+            if(calcDepth < marchDepth){
+                color = texture(Texture,(ndc.xy + 1)*0.5);
+                break;
+            }
         // }
         
     }
     // return tex2D(_PrimaryTex,(ndc+1)*0.5f);
-    outColor = mix(color, vec4(ndc.xy, 1, 1), step(warpUv.x, 0.1));
+    
+    outColor = mix(color, vec4(og_ndc.xyz,1), step(warpUv.x, 0.1));
+    // if(abs(delta) > 0.01f)
+    //     outColor = vec4(0,0,0,1);
     // outColor = vec4(V_worldspace,1);
     // //return abs(delta);
-    // if(abs(delta) > 0.5f) return 0;
+    
 
     // float viewBias = abs(marchDepth - calcDepth) / ( abs(marchDepth - calcDepth) - abs(marchDepth2 - calcDepth2) );
 
