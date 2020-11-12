@@ -156,7 +156,7 @@ void OpenwarpApplication::drawGUI(){
         ImGui::Text("Ray step size");
         ImGui::SliderFloat("##2", &rayStepSize, 0.0f, 5.0f);
         ImGui::Text("Ray depth offset");
-        ImGui::SliderFloat("##3", &rayDepthOffset, 1.0f, 2.0f);
+        ImGui::SliderFloat("##3", &rayDepthOffset, 0.0f, 2.0f);
         ImGui::PopItemWidth();
     
         ImGui::End();

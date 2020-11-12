@@ -73,9 +73,9 @@ class Openwarp::OpenwarpApplication{
         float bleedRadius = 0.005f;
         float bleedTolerance = 0.00f;
 
-        float rayPower = 1.0f;
-        float rayStepSize = 0.1f;
-        float rayDepthOffset = 1.0f;
+        float rayPower = 0.5f;
+        float rayStepSize = 0.3f;
+        float rayDepthOffset = 0.3f;
 
         bool showDebugGrid = false;
 
@@ -88,7 +88,9 @@ class Openwarp::OpenwarpApplication{
 
         // GLFW resources
         GLFWwindow* window;
-        double lastInputTime;
+        // Need to init so that we don't
+        // get uninitialized errors
+        double lastInputTime = glfwGetTime();
 
         // OpenGL resources
 

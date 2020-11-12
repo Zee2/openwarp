@@ -40,8 +40,8 @@ int init_and_link(const char* vert_filename, const char* frag_filename){
     std::string fragment_shader((std::istreambuf_iterator<char>(frag_file)), std::istreambuf_iterator<char>());
     const char* fragment_shader_source = fragment_shader.c_str();
 
-    std::cout << vertex_shader << std::endl;
-    std::cout << fragment_shader << std::endl;
+    //std::cout << vertex_shader << std::endl;
+    //std::cout << fragment_shader << std::endl;
 
     // GL handles for intermediary objects.
     GLint result, vertex_shader_handle, fragment_shader_handle, shader_program;
@@ -107,6 +107,7 @@ int init_and_link(const char* vert_filename, const char* frag_filename){
     if ( result == GL_FALSE )
     {
         GLsizei length = 0;
+        glGetProgramiv(shader_program, GL_INFO_LOG_LENGTH, &length);
 
 	    std::vector<GLchar> infoLog(length);
 	    glGetProgramInfoLog(shader_program, length, &length, &infoLog[0]);

@@ -64,6 +64,15 @@ vec3 ndcFromWorld(vec3 worldCoords, mat4x4 V, mat4x4 P){
     return clipSpacePosition.xyz;
 }
 
+float LinearEyeDepth(float nonlinearDepth, float zNear, float zFar){
+    float x = 1.0 - (zFar/zNear);
+    float y = zFar / zNear;
+    float z = x / zFar;
+    float w = y / zFar;
+    //return 1.0 / (z * nonlinearDepth + w);
+    return 2.0 * zNear * zFar / (zFar + zNear - nonlinearDepth * (zFar - zNear));
+}
+
 void main()
 {
     float counter = 0.01;
@@ -97,7 +106,7 @@ void main()
     vec4 color = texture(Texture,warpUv);
     vec3 og_ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
 
-    for(; iter < 512; iter++){
+    for(; iter < 32; iter++){
         
         // We calculate the point in the old pose's NDC space.
         ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
@@ -105,7 +114,8 @@ void main()
         // ndc2.x = clamp(ndc2.x,0,1);
         // ndc2.y = clamp(ndc2.y,0,1);
 
-        calcDepth = texture(_Depth,(ndc.xy + 1.) * 0.5).r * 2.0 - 1.0;
+        calcDepth = LinearEyeDepth(texture(_Depth,(ndc.xy + 1.) * 0.5).r, 0.1, 100);
+        //calcDepth = texture(_Depth, (ndc.xy + 1.) * 0.5).r * 2.0 - 1.0;
         //calcDepth = (sphereCast(ndc, 0.01f) + sphereCast(ndc, -0.01f))/2.0f;
 
         // if(abs(calcDepth + _StepSize - LinearEyeDepth(ndc.z)) < _Power){
@@ -118,8 +128,8 @@ void main()
         //     marchingPoint_worldspace += V_worldspace * _StepSize;
         // }
 
-        marchDepth = ndc.z;
-
+        marchDepth = LinearEyeDepth((ndc.z + 1.0) * 0.5, 0.1, 100);
+        //marchDepth = ndc.z;
         delta = calcDepth - marchDepth;
 
         // if(ndc2.x > 1 || ndc2.y > 1){
@@ -136,22 +146,22 @@ void main()
             counter += 0.01f;
             
             lastStep = clamp(delta * u_depthOffset, -u_stepSize, u_stepSize);
-            lastStep = u_stepSize;
+            //lastStep = u_stepSize;
             marchingPoint_worldspace += V_worldspace * lastStep;
             lastDepth = calcDepth;
             float factor = clamp(1-pow(abs(delta), u_power),0,1);
             accum += factor;
             color = mix(color,texture(Texture,(ndc.xy + 1)*0.5),factor);
-            if(calcDepth < marchDepth){
-                color = texture(Texture,(ndc.xy + 1)*0.5);
-                break;
-            }
+            //if(calcDepth < marchDepth){
+                //color = texture(Texture,(ndc.xy + 1)*0.5);
+                //break;
+            //}
         // }
         
     }
     // return tex2D(_PrimaryTex,(ndc+1)*0.5f);
     
-    outColor = mix(color, vec4(og_ndc.xyz,1), step(warpUv.x, 0.1));
+    outColor = color;
     // if(abs(delta) > 0.01f)
     //     outColor = vec4(0,0,0,1);
     // outColor = vec4(V_worldspace,1);
