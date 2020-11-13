@@ -48,6 +48,8 @@ uniform mediump vec3 u_warpPos;
 uniform mediump float u_power;
 uniform mediump float u_stepSize;
 uniform mediump float u_depthOffset;
+uniform lowp float u_occlusionThreshold;
+uniform lowp float u_occlusionOffset;
 
 in mediump vec4 worldspace;
 in mediump vec2 warpUv;
@@ -160,6 +162,13 @@ void main()
         
     }
     // return tex2D(_PrimaryTex,(ndc+1)*0.5f);
+
+    float occlusionFactor = step(u_occlusionThreshold, abs(delta));
+    marchingPoint_worldspace -= V_worldspace * occlusionFactor * u_occlusionOffset;
+    ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
+    color = texture(Texture,(ndc.xy + 1)*0.5);
+
+
     
     outColor = color;
     // if(abs(delta) > 0.01f)

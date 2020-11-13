@@ -157,6 +157,10 @@ void OpenwarpApplication::drawGUI(){
         ImGui::SliderFloat("##2", &rayStepSize, 0.0f, 5.0f);
         ImGui::Text("Ray depth offset");
         ImGui::SliderFloat("##3", &rayDepthOffset, 0.0f, 2.0f);
+        ImGui::Text("Occlusion detection threshold");
+        ImGui::SliderFloat("##4", &occlusionThreshold, 0.0f, 0.02f);
+        ImGui::Text("Occlusion offset");
+        ImGui::SliderFloat("##5", &occlusionOffset, 0.0f, 0.5f);
         ImGui::PopItemWidth();
     
         ImGui::End();
@@ -233,6 +237,8 @@ void OpenwarpApplication::doReprojection(bool useRay){
         glUniform1f(rayProgram.u_power, rayPower);
         glUniform1f(rayProgram.u_stepSize, rayStepSize);
         glUniform1f(rayProgram.u_depthOffset, rayDepthOffset);
+        glUniform1f(rayProgram.u_occlusionThreshold, occlusionThreshold);
+        glUniform1f(rayProgram.u_occlusionOffset, occlusionOffset);
 
     } else {
         glBindVertexArray(meshProgram.vao);
@@ -431,6 +437,9 @@ int OpenwarpApplication::initGL(){
     rayProgram.u_power = glGetUniformLocation(rayProgram.program, "u_power");
     rayProgram.u_stepSize = glGetUniformLocation(rayProgram.program, "u_stepSize");
     rayProgram.u_depthOffset = glGetUniformLocation(rayProgram.program, "u_depthOffset");
+    rayProgram.u_occlusionThreshold = glGetUniformLocation(rayProgram.program, "u_occlusionThreshold");
+    rayProgram.u_occlusionOffset = glGetUniformLocation(rayProgram.program, "u_occlusionOffset");
+
 
     // Generate, bind, and fill mesh VBOs.
     glGenBuffers(1, &rayProgram.mesh_vertices_vbo);

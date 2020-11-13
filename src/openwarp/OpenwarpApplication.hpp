@@ -70,12 +70,16 @@ class Openwarp::OpenwarpApplication{
         double nextRenderTime = 0.0f;
         double renderInterval = (1/15.0f);
 
+        // Hand-tuned parameters
         float bleedRadius = 0.005f;
         float bleedTolerance = 0.00f;
-
+           
+        // Hand-tuned parameters
         float rayPower = 0.5f;
-        float rayStepSize = 0.3f;
-        float rayDepthOffset = 0.3f;
+        float rayStepSize = 0.242f;
+        float rayDepthOffset = 0.379f;
+        float occlusionThreshold = 0.018f;
+        float occlusionOffset = 0.388f;
 
         bool showDebugGrid = false;
 
@@ -162,6 +166,8 @@ class Openwarp::OpenwarpApplication{
             GLuint u_power;
             GLuint u_stepSize;
             GLuint u_depthOffset;
+            GLuint u_occlusionThreshold;
+            GLuint u_occlusionOffset;
 
             GLint program;
             GLuint vao;
