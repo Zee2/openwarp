@@ -77,8 +77,11 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     initGL();
 }
 
-void OpenwarpApplication::RunTests(const TestRun& testRun) {
 
+
+void OpenwarpApplication::DoFullTestRun(const TestRun& testRun) {
+
+    // Create desired output dir if it doesn't exist
     if(!fs::exists(testRun.outputDir)){
         fs::create_directory(testRun.outputDir);
     }
@@ -89,9 +92,23 @@ void OpenwarpApplication::RunTests(const TestRun& testRun) {
     char timestampBuffer[128];
     std::strftime(timestampBuffer, 32, "%d.%m.%Y_%H.%M.%S", stamp); 
 
-    std::string full_dir = testRun.outputDir + "/" + std::string(timestampBuffer);
-    std::cout << "testRun.outputDir: " << testRun.outputDir << ", full_dir: " << full_dir << std::endl;
-    fs::create_directory(full_dir);
+    // Create the test run dir with timestamp.
+    std::string runDir = testRun.outputDir + "/" + std::string(timestampBuffer);
+    std::cout << "testRun.outputDir: " << testRun.outputDir << ", runDir: " << runDir << std::endl;
+    fs::create_directory(runDir);
+
+    // Create the ground truth and warp directories
+    fs::create_directory(runDir + "/warped");
+    fs::create_directory(runDir + "/ground_truth");
+
+    // Render and write reprojected frames
+    RunTest(testRun, runDir + "/warped", false, false);
+
+    // Render and write ground truth frames
+    RunTest(testRun, runDir + "/ground_truth", true, false);
+}
+
+void OpenwarpApplication::RunTest(const TestRun& testRun, std::string runDir, bool isGroundTruth, bool testUsesRay){
 
     // For GL_RGB8
     GLubyte* fb_data = (GLubyte*)malloc(WIDTH * HEIGHT * 3);
@@ -99,10 +116,19 @@ void OpenwarpApplication::RunTests(const TestRun& testRun) {
     // Need to flip vertically.
     stbi_flip_vertically_on_write(1);
 
-    position = testRun.startPose.position;
-    orientation = testRun.startPose.orientation;
-
-    renderScene();
+    // shouldReproject = true makes renderScene draw to renderFBO.
+    // shouldReproject = false makes renderScene draw to screen.
+    
+    if(isGroundTruth) {
+        shouldReproject = false;
+    } else {
+        // If not the ground truth run, we render once
+        // so that the reprojection has something to use.
+        position = testRun.startPose.position;
+        orientation = testRun.startPose.orientation;
+        shouldReproject = true;
+        renderScene();
+    }
 
     for (auto &test : testRun) {
         position = test.position;
@@ -112,12 +138,17 @@ void OpenwarpApplication::RunTests(const TestRun& testRun) {
         if(glfwWindowShouldClose(window)){
             break;
         }
-        doReprojection(useRay);
+
+        // Render
+        if (isGroundTruth)
+            renderScene();
+        else
+            doReprojection(testUsesRay);
 
         // Read pixels out from the screen.
         glReadPixels(0, 0, WIDTH, HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, fb_data);
 
-        std::string filename = full_dir + "/"
+        std::string filename = runDir + "/"
                                 + std::to_string(test.position[0]) + "_"
                                 + std::to_string(test.position[1]) + "_"
                                 + std::to_string(test.position[2]) + ".png";
@@ -126,8 +157,6 @@ void OpenwarpApplication::RunTests(const TestRun& testRun) {
 
         glfwSwapBuffers(window);
     }
-
-    free(fb_data);
 }
 
 void OpenwarpApplication::Run(){
@@ -393,7 +422,7 @@ OpenwarpApplication::~OpenwarpApplication(){
 
 int OpenwarpApplication::initGL(){
 
-    // Vsync enabled.
+    // Vsync disabled.
     glfwSwapInterval(0);
 
     glEnable              ( GL_DEBUG_OUTPUT );

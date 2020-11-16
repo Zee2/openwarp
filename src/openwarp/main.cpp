@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     if(doTestRun) {
         TestRun test = TestRun(displacement, stepSize, outputDir);
         std::cout << "Running automated test. " << test.GetNumPoints() << " poses to run." << std::endl;
-        app.RunTests(test);
+        app.DoFullTestRun(test);
     } else {
         app.Run();
     }

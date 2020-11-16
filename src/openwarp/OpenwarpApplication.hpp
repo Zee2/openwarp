@@ -40,7 +40,8 @@ class Openwarp::OpenwarpApplication{
 
         void Run();
 
-        void RunTests(const TestRun& testRun);
+        void DoFullTestRun(const TestRun& testRun);
+        void RunTest(const TestRun& testRun, std::string runDir, bool isGroundTruth, bool testUsesRay);
 
         static OpenwarpApplication* instance;
 
