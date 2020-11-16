@@ -2,6 +2,7 @@
 #include "openwarp.hpp"
 #include <vector>
 #include <Eigen/Dense>
+#include <string>
 #include "util/lib/iterator_tpl.h"
 
 namespace Openwarp {
@@ -9,12 +10,13 @@ namespace Openwarp {
 
         public:
             TestRun();
-            TestRun(float displacement, float stepSize, bool noShow = false,
+            TestRun(float displacement, float stepSize, std::string outputDir = "../output",
                 Eigen::Vector3f startPos = Eigen::Vector3f{-3,1.5,2},
-                Eigen::Quaternionf startOrientation = Eigen::AngleAxisf(-M_PI/4, Eigen::Vector3f::UnitY()) * Eigen::Quaternionf::Identity());
+                Eigen::Quaternionf startOrientation = Eigen::AngleAxisf(-M_PI/4, Eigen::Vector3f::UnitY())
+                                                    * Eigen::Quaternionf::Identity());
 
             const pose_t startPose;
-            const bool noShow;
+            const std::string outputDir;
 
             size_t GetNumPoints() { return testPoses.size(); }
 

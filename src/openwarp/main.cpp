@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     bool doTestRun = false;
     float displacement = 0;
     float stepSize = 0;
-    bool noshow = false;
+    std::string outputDir = "../output";
 
     for(size_t i = 0; i < args.size(); i++){
         if(args[i].compare("-debug") == 0){
@@ -46,8 +46,14 @@ int main(int argc, char *argv[]) {
             doTestRun = true;
         }
 
-        if(args[i].compare("-noshow") == 0){
-            noshow = true;
+        if(args[i].rfind("-output", 0) == 0){
+
+            if(i == args.size() - 1) {
+                throw std::invalid_argument("Usage: -output [output directory, default ../output]");
+            }
+
+            outputDir = args[i+1];
+            doTestRun = true;
         }
     }
 
@@ -57,7 +63,7 @@ int main(int argc, char *argv[]) {
     OpenwarpApplication app = OpenwarpApplication(debug);
 
     if(doTestRun) {
-        TestRun test = TestRun(displacement, stepSize, noshow);
+        TestRun test = TestRun(displacement, stepSize, outputDir);
         std::cout << "Running automated test. " << test.GetNumPoints() << " poses to run." << std::endl;
         app.RunTests(test);
     } else {

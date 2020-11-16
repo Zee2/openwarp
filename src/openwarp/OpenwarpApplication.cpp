@@ -4,9 +4,16 @@
 #include "Eigen/Dense"
 #include <string>
 #include <fstream>
+#include <chrono>
+#include <filesystem>
+namespace fs = std::filesystem;
 #include <glm/mat4x4.hpp>
 #include "util/shader_util.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "util/lib/stb_image_write.h"
+
 using namespace Openwarp;
 
 #define OBJ_DIR "../resources/"
@@ -72,6 +79,26 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
 
 void OpenwarpApplication::RunTests(const TestRun& testRun) {
 
+    if(!fs::exists(testRun.outputDir)){
+        fs::create_directory(testRun.outputDir);
+    }
+
+    // Get timestamp of run.
+    std::time_t now_tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm* stamp = gmtime(&now_tt);
+    char timestampBuffer[128];
+    std::strftime(timestampBuffer, 32, "%d.%m.%Y_%H.%M.%S", stamp); 
+
+    std::string full_dir = testRun.outputDir + "/" + std::string(timestampBuffer);
+    std::cout << "testRun.outputDir: " << testRun.outputDir << ", full_dir: " << full_dir << std::endl;
+    fs::create_directory(full_dir);
+
+    // For GL_RGB8
+    GLubyte* fb_data = (GLubyte*)malloc(WIDTH * HEIGHT * 3);
+
+    // Need to flip vertically.
+    stbi_flip_vertically_on_write(1);
+
     position = testRun.startPose.position;
     orientation = testRun.startPose.orientation;
 
@@ -87,11 +114,20 @@ void OpenwarpApplication::RunTests(const TestRun& testRun) {
         }
         doReprojection(useRay);
 
-        // Calling swapbuffers may slow the test down.
-        // Can be disabled in the testRun.
-        if(testRun.noShow == false)
-            glfwSwapBuffers(window);
+        // Read pixels out from the screen.
+        glReadPixels(0, 0, WIDTH, HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, fb_data);
+
+        std::string filename = full_dir + "/"
+                                + std::to_string(test.position[0]) + "_"
+                                + std::to_string(test.position[1]) + "_"
+                                + std::to_string(test.position[2]) + ".png";
+        std::cout << "Writing to " << filename << std::endl;
+        stbi_write_png(filename.c_str(), WIDTH, HEIGHT, 3, fb_data, WIDTH * sizeof(GLubyte) * 3);
+
+        glfwSwapBuffers(window);
     }
+
+    free(fb_data);
 }
 
 void OpenwarpApplication::Run(){

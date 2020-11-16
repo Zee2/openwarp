@@ -4,15 +4,15 @@
 using namespace Openwarp;
 using namespace Eigen;
 
-TestRun::TestRun() : noShow(false){
+TestRun::TestRun() : outputDir("../output"){
     std::cout << "Default constructor" << std::endl;
     // Empty. No test data requested.
 }
 
-TestRun::TestRun(float displacement, float stepSize, bool noShow,
+TestRun::TestRun(float displacement, float stepSize, std::string outputDir,
                 Eigen::Vector3f startPos,
                 Eigen::Quaternionf startOrientation)
-                 : startPose(pose_t { startPos, startOrientation}), noShow(noShow) {
+                 : startPose(pose_t { startPos, startOrientation}), outputDir(outputDir) {
     
     // Iterate through all displacements.
     for(float x = -displacement; x <= displacement; x += stepSize){

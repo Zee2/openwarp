@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 
+
+
 project(openwarp)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+message("${CMAKE_CXX_COMPILER_ID}")
+
+message("Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 if (MSVC_VERSION GREATER_EQUAL "1900")
     include(CheckCXXCompilerFlag)
@@ -13,7 +19,7 @@ if (MSVC_VERSION GREATER_EQUAL "1900")
     endif()
 endif()
 
-add_executable(main
+add_executable(openwarp
         src/openwarp/main.cpp
         src/openwarp/openwarp.hpp
         src/openwarp/OpenwarpApplication.cpp
@@ -34,6 +40,9 @@ add_executable(main
         include/imgui/imgui_demo.cpp
 )
 
+# std::filesystem
+target_link_libraries(openwarp PUBLIC stdc++fs)
+
 # imgui does not support cmake... yet!
 include_directories(include/imgui)
 
@@ -42,18 +51,19 @@ include_directories(include/eigen)
 
 set(CMAKE_BUILD_TYPE Debug)
 
-set_property(TARGET main PROPERTY CXX_STANDARD 11)
-target_compile_options(main PRIVATE -Wall)
+set_property(TARGET openwarp PROPERTY CXX_STANDARD 17)
+target_compile_options(openwarp PRIVATE -Wall)
 
 # glfw
 add_subdirectory(include/glfw EXCLUDE_FROM_ALL)
-target_link_libraries(main PRIVATE glfw)
+target_link_libraries(openwarp PRIVATE glfw)
 
 # glew
 add_definitions(-DGLEW_STATIC)
 add_subdirectory(include/glew-cmake EXCLUDE_FROM_ALL)
-target_link_libraries(main PRIVATE libglew_static)
+target_link_libraries(openwarp PRIVATE libglew_static)
 
 # glm
 add_subdirectory(include/glm EXCLUDE_FROM_ALL)
-target_link_libraries(main PRIVATE glm)
+target_link_libraries(openwarp PRIVATE glm)
+
