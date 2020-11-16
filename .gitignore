@@ -33,6 +33,9 @@
 # Build folder
 build/
 
+# Output folder
+output/
+
 # Compiled shaders
 *.spv
 
