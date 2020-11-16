@@ -23,10 +23,7 @@
 
 #include "openwarp.hpp"
 #include "util/obj.hpp"
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#include "testrun.hpp"
 
 class Openwarp::OpenwarpApplication{
 
@@ -42,6 +39,8 @@ class Openwarp::OpenwarpApplication{
         ~OpenwarpApplication();
 
         void Run();
+
+        void RunTests(const TestRun& testRun);
 
         static OpenwarpApplication* instance;
 
@@ -318,8 +317,8 @@ class Openwarp::OpenwarpApplication{
             vertices.resize(num_vertices);
 
             // Build indices.
-            for ( int y = 0; y < height; y++ ) {
-                for ( int x = 0; x < width; x++ ) {
+            for ( size_t y = 0; y < height; y++ ) {
+                for ( size_t x = 0; x < width; x++ ) {
 
                     const int offset = ( y * width + x ) * 6;
 

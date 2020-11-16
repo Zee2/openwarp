@@ -18,6 +18,8 @@ add_executable(main
         src/openwarp/openwarp.hpp
         src/openwarp/OpenwarpApplication.cpp
         src/openwarp/OpenwarpApplication.hpp
+        src/openwarp/testrun.cpp
+        src/openwarp/testrun.hpp
         src/openwarp/util/lib/stb_image.h
         src/openwarp/util/lib/tiny_obj_loader.h
         src/openwarp/util/obj.hpp

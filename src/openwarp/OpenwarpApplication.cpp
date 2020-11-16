@@ -70,6 +70,30 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     initGL();
 }
 
+void OpenwarpApplication::RunTests(const TestRun& testRun) {
+
+    position = testRun.startPose.position;
+    orientation = testRun.startPose.orientation;
+
+    renderScene();
+
+    for (auto &test : testRun) {
+        position = test.position;
+        orientation = test.orientation;
+
+        glfwPollEvents();
+        if(glfwWindowShouldClose(window)){
+            break;
+        }
+        doReprojection(useRay);
+
+        // Calling swapbuffers may slow the test down.
+        // Can be disabled in the testRun.
+        if(testRun.noShow == false)
+            glfwSwapBuffers(window);
+    }
+}
+
 void OpenwarpApplication::Run(){
     while(!glfwWindowShouldClose(window)) {
 
