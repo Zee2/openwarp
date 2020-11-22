@@ -4,6 +4,9 @@ on:
   push:
     branches: [ development ]
 
+env:
+  CC: gcc-9
+
 jobs:
   linux:
 
