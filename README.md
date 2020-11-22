@@ -12,6 +12,14 @@ Openwarp is the first public implementation of spatio-temporal reprojection avai
 
 Openwarp includes two different algorithms for spatial reprojection. One is a mesh-based system, and another is a raymarching-based system. The mesh-based system is typically more performant than the raymarch system (for equivalent quality settings), but can fail to accurately reproject fine details due to the limitation of the mesh resolution. Both algorithms offer several customizable parameters that can be adjusted to the developers' liking, offering tradeoffs between performance, quality, and accuracy.
 
+## Building from source
+
+This project uses CMake, and is properly configured to build on both Linux and Windows. (Windows has an issue with the framebuffer objects not behaving properly; can cause issues when rendering is freezed in the demo application.) For Linux, install the xorg and OpenGL dependencies with
+```
+sudo apt-get install xorg-dev libgl-dev
+```
+Most Ubuntu distributions should include all other dependencies, and Windows should not require any other dependencies. GLEW, GLFW, Eigen, GLM, and IMGUI are all built from source in this project and do not require external installations. Run `cmake .` in the `./build/` directory, and compile with `make`.
+
 ## Demo application
 
 Included is a demo application that visualizes the effects and benefits of spatial reprojection. You can switch between the two reprojection algorithms (mesh-based and raymarch-based), as well as adjust the parameters of each reprojection algorithm on the fly. In addition, you can adjust the rendering framerate of the "application", as well as freeze the rendering entirely.
