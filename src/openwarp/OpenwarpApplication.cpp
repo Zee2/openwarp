@@ -7,6 +7,8 @@
 #include <chrono>
 #include <filesystem>
 namespace fs = std::filesystem;
+#include <iostream>
+#include <fstream>
 #include <glm/mat4x4.hpp>
 #include "util/shader_util.hpp"
 #include <glm/gtc/matrix_transform.hpp>
@@ -97,6 +99,16 @@ void OpenwarpApplication::DoFullTestRun(const TestRun& testRun) {
     std::cout << "testRun.outputDir: " << testRun.outputDir << ", runDir: " << runDir << std::endl;
     fs::create_directory(runDir);
 
+    std::string origin_tag = std::to_string(testRun.startPose.position[0]) + "_"
+                            + std::to_string(testRun.startPose.position[1]) + "_"
+                            + std::to_string(testRun.startPose.position[2]);
+
+    // Write the test origin to a file.
+    std::ofstream info_file;
+    info_file.open(runDir + "/run_info.txt");
+    info_file << origin_tag;
+    info_file.close();
+
     // Create the ground truth and warp directories
     fs::create_directory(runDir + "/warped");
     fs::create_directory(runDir + "/ground_truth");
@@ -149,9 +161,9 @@ void OpenwarpApplication::RunTest(const TestRun& testRun, std::string runDir, bo
         glReadPixels(0, 0, WIDTH, HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, fb_data);
 
         std::string filename = runDir + "/"
-                                + std::to_string(test.position[0]) + "_"
-                                + std::to_string(test.position[1]) + "_"
-                                + std::to_string(test.position[2]) + ".png";
+                                + std::to_string(test.relative_pos[0]) + "_"
+                                + std::to_string(test.relative_pos[1]) + "_"
+                                + std::to_string(test.relative_pos[2]) + ".png";
         std::cout << "Writing to " << filename << std::endl;
         stbi_write_png(filename.c_str(), WIDTH, HEIGHT, 3, fb_data, WIDTH * sizeof(GLubyte) * 3);
 

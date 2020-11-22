@@ -14,6 +14,7 @@ namespace Openwarp{
 
     typedef struct pose_t {
         Eigen::Vector3f position;
+        Eigen::Vector3f relative_pos;
         Eigen::Quaternionf orientation;
     } pose_t;
 }
