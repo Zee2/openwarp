@@ -6,7 +6,7 @@ on:
 
 env:
   CC: gcc-9
-  CXX: gcc-9
+  CXX: g++-8
 
 jobs:
   linux:
