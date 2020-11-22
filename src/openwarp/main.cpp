@@ -13,11 +13,22 @@ int main(int argc, char *argv[]) {
     bool doTestRun = false;
     float displacement = 0;
     float stepSize = 0;
+    size_t meshSize = 1024;
     std::string outputDir = "../output";
 
     for(size_t i = 0; i < args.size(); i++){
         if(args[i].compare("-debug") == 0){
             debug = true;
+        }
+
+        if(args[i].rfind("-mesh") == 0){
+            if(i == args.size() - 1) {
+                throw std::invalid_argument("Usage: -mesh [reprojection mesh dimension]");
+            }
+            std::stringstream stream(args[i+1]);
+            if(!(stream >> meshSize)){
+                throw std::invalid_argument("Usage: -mesh must be followed by a valid reprojection mesh size (integer)");
+            }
         }
 
         if(args[i].rfind("-disp", 0) == 0){
@@ -60,7 +71,7 @@ int main(int argc, char *argv[]) {
     if((displacement == 0 || stepSize == 0) && doTestRun)
         throw std::runtime_error("Usage: Neither stepSize nor displacement can be zero, if provided.");
 
-    OpenwarpApplication app = OpenwarpApplication(debug);
+    OpenwarpApplication app = OpenwarpApplication(debug, meshSize);
 
     if(doTestRun) {
         TestRun test = TestRun(displacement, stepSize, outputDir);

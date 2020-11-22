@@ -22,7 +22,7 @@ using namespace Openwarp;
 
 OpenwarpApplication* OpenwarpApplication::instance;
 
-OpenwarpApplication::OpenwarpApplication(bool debug){
+OpenwarpApplication::OpenwarpApplication(bool debug, size_t meshSize){
 
     // For static callbacks.
     OpenwarpApplication::instance = this;
@@ -49,6 +49,7 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     is_debug = debug;
 
     glfwSetMouseButtonCallback(window, mouseClickCallback);
+    glfwSetScrollCallback(window, scrollCallback);
     glfwSetKeyCallback(window, keyCallback);
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
 
@@ -75,6 +76,10 @@ OpenwarpApplication::OpenwarpApplication(bool debug){
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
+
+    meshWidth = meshHeight = meshSize;
+    // Adjust meshwarp bleed radius according to mesh size.
+    bleedRadius = (1.0f/(meshWidth)) + 0.002f;
 
     initGL();
 }
@@ -212,29 +217,12 @@ void OpenwarpApplication::drawGUI(){
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-
-    // Menu Bar
-    if (ImGui::BeginMainMenuBar())
-    {
-        ImGui::Text("Openwarp");
-        if (ImGui::BeginMenu("Configuration"))
-        {
-            if (ImGui::MenuItem("Mesh-based"))
-                showMeshConfig = true;
-            if (ImGui::MenuItem("Raymarch-based"))
-                showRayConfig = true;
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit"))
-        {
-            ImGui::EndMenu();
-        }
-        ImGui::EndMainMenuBar();
-    }
     
     if(showMeshConfig) {
-        ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
-        ImGui::Begin("Mesh configuration", &showMeshConfig);
+        ImGui::SetNextWindowPos(ImVec2(0, 1024), ImGuiCond_Once, ImVec2(0.0f, 1.0f));
+        ImGui::SetNextWindowSize(ImVec2(300,250), ImGuiCond_Always);
+        
+        ImGui::Begin("Mesh configuration", &showMeshConfig, ImGuiWindowFlags_NoResize);
         if (ImGui::CollapsingHeader("Edge bleed options", ImGuiTreeNodeFlags_DefaultOpen)){
             ImGui::Text("Edge bleed radius");
             ImGui::PushItemWidth(-1);
@@ -249,8 +237,10 @@ void OpenwarpApplication::drawGUI(){
     }
 
     if(showRayConfig) {
-        ImGui::SetNextWindowSize(ImVec2(300,500), ImGuiCond_Once);
-        ImGui::Begin("Raymarch configuration", &showRayConfig);
+        ImGui::SetNextWindowPos(ImVec2(300, 1024), ImGuiCond_Once, ImVec2(0.0f, 1.0f));
+        ImGui::SetNextWindowSize(ImVec2(300,250), ImGuiCond_Always);
+        
+        ImGui::Begin("Raymarch configuration", &showRayConfig, ImGuiWindowFlags_NoResize);
         ImGui::Text("Ray exponent power");
         ImGui::PushItemWidth(-1);
         ImGui::SliderFloat("##1", &rayPower, 0.0f, 1.0f);
@@ -276,15 +266,59 @@ void OpenwarpApplication::drawGUI(){
                                     ImGuiWindowFlags_NoMove;
 
     ImGui::SetNextWindowPos(ImVec2(imgui_io.DisplaySize.x - 10.0f, 20.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2(350,300), ImGuiCond_Always);
     ImGui::Begin("Stats", NULL, overlay_flags);
     ImGui::Text("Current stats:");
     ImGui::Separator();
     ImGui::Text("Render framerate: ");
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%.2f hz", (float)(1.0f/renderInterval));
+    ImGui::Text("Is rendering? ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), shouldRenderScene ? "Yes" : "No");
     ImGui::Text("Presentation framerate: ");
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%.2f hz", (float)presentationFramerate);
+    ImGui::Text("Current reprojection algo: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), useRay ? "Raymarch-based" : "Mesh-based");
+    ImGui::Text("Is reprojecting? ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), shouldReproject ? "Yes" : "No");
+    ImGui::Text("Mesh size: ");
+    ImGui::SameLine();
+    if(useRay) {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "N/A");
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%d x %d", meshWidth, meshHeight);
+    }
+    
+    
+    ImGui::Dummy(ImVec2(0.0f, 20.0f));
+    
+    ImGui::Text("Controls:");
+    ImGui::Separator();
+    ImGui::Text("Look: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mouse");
+    ImGui::Text("Move: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "WASD, QE");
+    ImGui::Text("Change render FPS: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Scroll wheel");
+    ImGui::Text("Toggle rendering: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "F");
+    ImGui::Text("Switch reprojection type: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "T");
+    ImGui::Text("Toggle reprojection: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "R");
+    ImGui::Text("Release mouse focus: ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Esc");
     ImGui::End();
 
     ImGui::Render();
@@ -474,7 +508,7 @@ int OpenwarpApplication::initGL(){
     glBindVertexArray(meshProgram.vao);
 
     // Build the reprojection mesh for mesh-based Openwarp
-	BuildMesh(MESH_WIDTH, MESH_HEIGHT, meshProgram.mesh_indices, meshProgram.mesh_vertices);
+	BuildMesh(meshWidth, meshHeight, meshProgram.mesh_indices, meshProgram.mesh_vertices);
 
     // Build and link shaders for openwarp-mesh.
 	meshProgram.program = init_and_link("../resources/shaders/openwarp_mesh.vert", "../resources/shaders/openwarp_mesh.frag");

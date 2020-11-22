@@ -29,13 +29,9 @@ class Openwarp::OpenwarpApplication{
 
     const uint32_t WIDTH = 1024;
     const uint32_t HEIGHT = 1024;
-    static constexpr uint32_t MESH_WIDTH = 512;
-    static constexpr uint32_t MESH_HEIGHT = 512;
-
-    
 
     public:
-        OpenwarpApplication(bool debug);
+        OpenwarpApplication(bool debug, size_t meshSize = 1024);
         ~OpenwarpApplication();
 
         void Run();
@@ -56,8 +52,8 @@ class Openwarp::OpenwarpApplication{
                 xpos_unfocus = 0,
                 ypos_unfocus = 0;
 
-        bool showMeshConfig = false;
-        bool showRayConfig = false;
+        bool showMeshConfig = true;
+        bool showRayConfig = true;
 
         // Application resources
         ObjScene demoscene;
@@ -68,11 +64,15 @@ class Openwarp::OpenwarpApplication{
         Eigen::Matrix4f renderedCameraMatrix;
 
         double nextRenderTime = 0.0f;
-        double renderInterval = (1/15.0f);
+        double renderFPS = 15.0f;
+        double renderInterval = (1/renderFPS);
+
+        size_t meshWidth = 1024;
+        size_t meshHeight = 1024;
 
         // Hand-tuned parameters
         float bleedRadius = 0.005f;
-        float bleedTolerance = 0.00f;
+        float bleedTolerance = 0.0001f;
            
         // Hand-tuned parameters
         float rayPower = 0.5f;
@@ -183,6 +183,12 @@ class Openwarp::OpenwarpApplication{
         void renderScene();
         void doReprojection(bool useRay);
 
+        static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+            OpenwarpApplication::instance->renderFPS += yoffset;
+            OpenwarpApplication::instance->renderFPS = abs(OpenwarpApplication::instance->renderFPS);
+            OpenwarpApplication::instance->renderInterval = 1.0f/OpenwarpApplication::instance->renderFPS;
+        }
+
         static void mouseClickCallback(GLFWwindow* window, int button, int action, int mods) {
             if(OpenwarpApplication::instance != NULL &&
                 OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
@@ -213,7 +219,7 @@ class Openwarp::OpenwarpApplication{
                 
             }
 
-            if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+            if (key == GLFW_KEY_F && action == GLFW_PRESS) {
                 if(OpenwarpApplication::instance != NULL &&
                     !OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
                     
@@ -221,7 +227,7 @@ class Openwarp::OpenwarpApplication{
                 }
             }
 
-            if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+            if (key == GLFW_KEY_R && action == GLFW_PRESS) {
                 if(OpenwarpApplication::instance != NULL &&
                     !OpenwarpApplication::instance->imgui_io.WantCaptureMouse) {
                     
