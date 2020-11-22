@@ -18,7 +18,7 @@ This project uses CMake, and is properly configured to build on both Linux and W
 ```
 sudo apt-get install xorg-dev libgl-dev
 ```
-Most Ubuntu distributions should include all other dependencies, and Windows should not require any other dependencies. GLEW, GLFW, Eigen, GLM, and IMGUI are all built from source in this project and do not require external installations. Run `cmake .` in the `./build/` directory, and compile with `make`.
+Most Ubuntu distributions should include all other dependencies, and Windows should not require any other dependencies. GLEW, GLFW, Eigen, GLM, and IMGUI are all built from source in this project, and are included as git submodules. You'll need to run `git pull --recurse-submodules` to pull them down. Run `cmake .` in the `./build/` directory, and compile with `make`.
 
 ## Demo application
 
@@ -60,6 +60,12 @@ optional arguments:
   --usecache    Do not run SSIM analysis; instead, use cached SSIM data from a
                 previous analysis run
 ```
+
+## Issues and contributing
+
+Please file issues if you are having trouble running Openwarp, or if you have any issues with integrating the shaders themselves into your project.
+
+I may not have time to accept or review large PRs right now (very busy!) but small bugfixes are always welcome.
 
 ## Paper
 
