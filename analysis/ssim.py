@@ -40,10 +40,10 @@ def ssim_thread(filename):
     return ([float(i) for i in vector], ssim_result)
 
 parser = argparse.ArgumentParser(description='Perform automated SSIM analysis of Openwarp output.')
-parser.add_argument('displacement')
-parser.add_argument('stepSize')
-parser.add_argument('--norun', action="store_true")
-parser.add_argument('--usecache', action="store_true")
+parser.add_argument('displacement', help='Maximum displacement from the rendered pose to reproject')
+parser.add_argument('stepSize', help='Distance between each analyzed reprojected frame in 3D space (i.e., the size of each step)')
+parser.add_argument('--norun', action="store_true", help='Do not run Openwarp; instead, use the latest previous run')
+parser.add_argument('--usecache', action="store_true", help='Do not run SSIM analysis; instead, use cached SSIM data from a previous analysis run')
 
 args = parser.parse_args()
 

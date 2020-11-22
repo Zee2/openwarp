@@ -31,7 +31,7 @@ class Openwarp::OpenwarpApplication{
     const uint32_t HEIGHT = 1024;
 
     public:
-        OpenwarpApplication(bool debug, size_t meshSize = 1024);
+        OpenwarpApplication(size_t meshSize = 1024);
         ~OpenwarpApplication();
 
         void Run();
@@ -44,7 +44,6 @@ class Openwarp::OpenwarpApplication{
     private:
 
         // Application metadata
-        bool is_debug;
         ImGuiIO imgui_io;
 
         double xpos_onfocus = 0,

@@ -22,12 +22,12 @@ using namespace Openwarp;
 
 OpenwarpApplication* OpenwarpApplication::instance;
 
-OpenwarpApplication::OpenwarpApplication(bool debug, size_t meshSize){
+OpenwarpApplication::OpenwarpApplication(size_t meshSize){
 
     // For static callbacks.
     OpenwarpApplication::instance = this;
 
-    std::cout << "Initializing Openwarp, debug = " << debug << std::endl;
+    std::cout << "Initializing Openwarp";
     std::cout << "Initializing GLFW...." << std::endl;
     if(!glfwInit()) {
         abort();
@@ -46,7 +46,6 @@ OpenwarpApplication::OpenwarpApplication(bool debug, size_t meshSize){
     }
     glfwMakeContextCurrent(window);
     std::cout << "Application window successfully created...." << std::endl;
-    is_debug = debug;
 
     glfwSetMouseButtonCallback(window, mouseClickCallback);
     glfwSetScrollCallback(window, scrollCallback);

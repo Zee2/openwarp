@@ -9,7 +9,20 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::string> args(argv + 1, argv + argc);
 
-    bool debug = false;
+    std::string usageMessage =
+    "usage: ./openwarp [-h] [-mesh integer] [-disp displacement] [-step stepSize] [-output outputDir]\n\n"
+    "Run the Openwarp demo application, with optional automation.\n\n"
+    "optional arguments:\n"
+    "  -h            Show this help message and exit\n"
+    "  -mesh         Specify the width of the reprojection mesh for openwarp-mesh.\n"
+    "                Defaults to 1024x1024.\n"
+    "  -disp         Specify the max reprojection displacement of the automated test\n"
+    "                run. If this is specified, you also need to specify -step.\n"
+    "  -step         Specify the step size of the automated test run. If this is\n"
+    "                specified, you also need to specify -disp.\n"
+    "  -output       Specify the output directory for the automated test run. If\n"
+    "                this is specified, you also need to specify -disp and -step.\n";
+
     bool doTestRun = false;
     float displacement = 0;
     float stepSize = 0;
@@ -17,8 +30,10 @@ int main(int argc, char *argv[]) {
     std::string outputDir = "../output";
 
     for(size_t i = 0; i < args.size(); i++){
-        if(args[i].compare("-debug") == 0){
-            debug = true;
+
+        if(args[i].rfind("-h") == 0){
+            std::cout << usageMessage;
+            return 0;
         }
 
         if(args[i].rfind("-mesh") == 0){
@@ -71,7 +86,7 @@ int main(int argc, char *argv[]) {
     if((displacement == 0 || stepSize == 0) && doTestRun)
         throw std::runtime_error("Usage: Neither stepSize nor displacement can be zero, if provided.");
 
-    OpenwarpApplication app = OpenwarpApplication(debug, meshSize);
+    OpenwarpApplication app = OpenwarpApplication(meshSize);
 
     if(doTestRun) {
         TestRun test = TestRun(displacement, stepSize, outputDir);
