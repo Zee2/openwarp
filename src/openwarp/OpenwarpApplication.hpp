@@ -53,6 +53,7 @@ class Openwarp::OpenwarpApplication{
 
         bool showMeshConfig = true;
         bool showRayConfig = true;
+        bool useVsync = false;
 
         // Application resources
         ObjScene demoscene;

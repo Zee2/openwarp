@@ -292,6 +292,21 @@ void OpenwarpApplication::drawGUI(){
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%d x %d", meshWidth, meshHeight);
     }
     
+    if (useVsync == true)
+    {
+        ImGui::Button(" Vsync ON ");
+        if (ImGui::IsItemClicked(0))
+        {
+            useVsync = !useVsync;
+            glfwSwapInterval(useVsync ? 1 : 0);
+        }
+    } else {
+        if (ImGui::Button(" Vsync OFF ")){
+            useVsync = true;
+            glfwSwapInterval(useVsync ? 1 : 0);
+        }
+    }
+    
     
     ImGui::Dummy(ImVec2(0.0f, 20.0f));
     
@@ -467,8 +482,7 @@ OpenwarpApplication::~OpenwarpApplication(){
 
 int OpenwarpApplication::initGL(){
 
-    // Vsync disabled.
-    glfwSwapInterval(0);
+    glfwSwapInterval(useVsync ? 1 : 0);
 
     glEnable              ( GL_DEBUG_OUTPUT );
     glDebugMessageCallback( MessageCallback, 0 );
