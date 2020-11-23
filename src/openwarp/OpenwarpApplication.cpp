@@ -248,9 +248,9 @@ void OpenwarpApplication::drawGUI(){
         ImGui::Text("Ray depth offset");
         ImGui::SliderFloat("##3", &rayDepthOffset, 0.0f, 2.0f);
         ImGui::Text("Occlusion detection threshold");
-        ImGui::SliderFloat("##4", &occlusionThreshold, 0.0f, 0.02f);
+        ImGui::SliderFloat("##4", &occlusionThreshold, 0.0f, 0.03f);
         ImGui::Text("Occlusion offset");
-        ImGui::SliderFloat("##5", &occlusionOffset, 0.0f, 0.5f);
+        ImGui::SliderFloat("##5", &occlusionOffset, 0.0f, 1.0f);
         ImGui::PopItemWidth();
     
         ImGui::End();

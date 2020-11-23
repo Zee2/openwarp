@@ -58,20 +58,15 @@ out mediump vec4 outColor;
 
 vec3 ndcFromWorld(vec3 worldCoords, mat4x4 V, mat4x4 P){
     vec4 homogeneous = vec4(worldCoords,1.0);
-    vec4 viewSpacePosition = V * homogeneous;
-    vec4 clipSpacePosition = P * viewSpacePosition;
-
+    // vec4 viewSpacePosition = V * homogeneous;
+    // vec4 clipSpacePosition = P * viewSpacePosition;
+    vec4 clipSpacePosition = P * V * homogeneous;
     clipSpacePosition /= clipSpacePosition.w;
 
     return clipSpacePosition.xyz;
 }
 
 float LinearEyeDepth(float nonlinearDepth, float zNear, float zFar){
-    float x = 1.0 - (zFar/zNear);
-    float y = zFar / zNear;
-    float z = x / zFar;
-    float w = y / zFar;
-    //return 1.0 / (z * nonlinearDepth + w);
     return 2.0 * zNear * zFar / (zFar + zNear - nonlinearDepth * (zFar - zNear));
 }
 
@@ -109,8 +104,8 @@ void main()
 
         calcDepth = LinearEyeDepth(texture(_Depth,(ndc.xy + 1.) * 0.5).r, 0.1, 100);
         marchDepth = LinearEyeDepth((ndc.z + 1.0) * 0.5, 0.1, 100);
+
         delta = calcDepth - marchDepth;
-        counter += 0.01f;
             
         lastStep = clamp(delta * u_depthOffset, -u_stepSize, u_stepSize);
         //lastStep = u_stepSize;
@@ -119,14 +114,12 @@ void main()
         float factor = clamp(1-pow(abs(delta), u_power),0,1);
         accum += factor;
         color = mix(color,texture(Texture,(ndc.xy + 1)*0.5),factor);
-        
     }
 
     // Occlusion hole-filling.
     float occlusionFactor = step(u_occlusionThreshold, abs(delta));
     marchingPoint_worldspace -= V_worldspace * occlusionFactor * u_occlusionOffset;
     ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
-    color = texture(Texture,(ndc.xy + 1)*0.5);
-
+    color = mix(color,texture(Texture,(ndc.xy + 1)*0.5),occlusionFactor);
     outColor = color;
 }

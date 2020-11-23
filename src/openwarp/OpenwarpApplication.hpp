@@ -78,7 +78,7 @@ class Openwarp::OpenwarpApplication{
         float rayPower = 0.5f;
         float rayStepSize = 0.242f;
         float rayDepthOffset = 0.379f;
-        float occlusionThreshold = 0.018f;
+        float occlusionThreshold = 0.02f;
         float occlusionOffset = 0.388f;
 
         bool showDebugGrid = false;
