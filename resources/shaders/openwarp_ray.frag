@@ -58,8 +58,6 @@ out mediump vec4 outColor;
 
 vec3 ndcFromWorld(vec3 worldCoords, mat4x4 V, mat4x4 P){
     vec4 homogeneous = vec4(worldCoords,1.0);
-    // vec4 viewSpacePosition = V * homogeneous;
-    // vec4 clipSpacePosition = P * viewSpacePosition;
     vec4 clipSpacePosition = P * V * homogeneous;
     clipSpacePosition /= clipSpacePosition.w;
 
