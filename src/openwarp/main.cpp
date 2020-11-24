@@ -27,6 +27,7 @@ int main(int argc, char *argv[]) {
     float displacement = 0;
     float stepSize = 0;
     size_t meshSize = 1024;
+    bool showGUI = true;
     std::string outputDir = "../output";
 
     for(size_t i = 0; i < args.size(); i++){
@@ -34,6 +35,10 @@ int main(int argc, char *argv[]) {
         if(args[i].rfind("-h") == 0){
             std::cout << usageMessage;
             return 0;
+        }
+
+        if(args[i].rfind("-nogui") == 0){
+            showGUI = false;
         }
 
         if(args[i].rfind("-mesh") == 0){
@@ -93,6 +98,6 @@ int main(int argc, char *argv[]) {
         std::cout << "Running automated test. " << test.GetNumPoints() << " poses to run." << std::endl;
         app.DoFullTestRun(test);
     } else {
-        app.Run();
+        app.Run(showGUI);
     }
 }

@@ -175,7 +175,7 @@ void OpenwarpApplication::RunTest(const TestRun& testRun, std::string runDir, bo
     }
 }
 
-void OpenwarpApplication::Run(){
+void OpenwarpApplication::Run(bool showGUI){
     while(!glfwWindowShouldClose(window)) {
 
         glfwPollEvents();
@@ -204,7 +204,8 @@ void OpenwarpApplication::Run(){
         if (shouldReproject)
             doReprojection(useRay);
 
-        drawGUI();
+        if(showGUI)
+            drawGUI();
         
         glfwSwapBuffers(window);
         presentationFramerate = 1.0/(glfwGetTime() - lastSwapTime);

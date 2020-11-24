@@ -34,7 +34,7 @@ class Openwarp::OpenwarpApplication{
         OpenwarpApplication(size_t meshSize = 1024);
         ~OpenwarpApplication();
 
-        void Run();
+        void Run(bool showGUI);
 
         void DoFullTestRun(const TestRun& testRun);
         void RunTest(const TestRun& testRun, std::string runDir, bool isGroundTruth, bool testUsesRay);
