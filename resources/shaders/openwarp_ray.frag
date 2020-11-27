@@ -56,9 +56,8 @@ in mediump vec2 warpUv;
 out mediump vec4 outColor;
 
 
-vec3 ndcFromWorld(vec3 worldCoords, mat4x4 V, mat4x4 P){
-    vec4 homogeneous = vec4(worldCoords,1.0);
-    vec4 clipSpacePosition = P * V * homogeneous;
+vec3 ndcFromWorld(vec4 worldCoords, mat4x4 V, mat4x4 P){
+    vec4 clipSpacePosition = P * V * worldCoords;
     clipSpacePosition /= clipSpacePosition.w;
 
     return clipSpacePosition.xyz;
@@ -73,9 +72,8 @@ void main()
     float counter = 0.01;
     int iter = 0;
 
-    vec3 frag_cameraspace = (u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 1, 1)).xyz;
-    vec3 V_worldspace = (u_warpInverseV * vec4(frag_cameraspace,0)).xyz;
-    vec3 marchingPoint_worldspace = u_warpPos + V_worldspace;
+    vec4 V_worldspace = u_warpInverseV * u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 1.0, 1);
+    vec4 marchingPoint_worldspace = vec4(u_warpPos,1) + V_worldspace;
 
     vec3 ndc;
     vec3 ndc2;
