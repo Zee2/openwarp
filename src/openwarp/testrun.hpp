@@ -10,7 +10,7 @@ namespace Openwarp {
 
         public:
             TestRun();
-            TestRun(double displacement, double stepSize, std::string outputDir = "../output", bool useRay=false, bool singleAxis = false, Eigen::Vector3f axis = Eigen::Vector3f::UnitX(),
+            TestRun(double displacement, double stepSize, std::string outputDir = "../output", bool useRay=false, bool axisMode = false,
                 Eigen::Vector3f startPos = Eigen::Vector3f{1.3,1.5,2.2},
                 Eigen::Quaternionf startOrientation =   
                                                     Eigen::AngleAxisf(M_PI/8, Eigen::Vector3f::UnitY())

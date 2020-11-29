@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::string> args(argv + 1, argv + argc);
 
     std::string usageMessage =
-    "usage: ./openwarp [-h] [-mesh integer] [-disp displacement] [-step stepSize] [-output outputDir]\n\n"
+    "usage: ./openwarp [-h] [-mesh integer] [-disp displacement] [-step stepSize] [-output outputDir] [-ray] [-singleaxis Axis]\n\n"
     "Run the Openwarp demo application, with optional automation.\n\n"
     "optional arguments:\n"
     "  -h            Show this help message and exit\n"
@@ -21,12 +21,13 @@ int main(int argc, char *argv[]) {
     "  -step         Specify the step size of the automated test run. If this is\n"
     "                specified, you also need to specify -disp.\n"
     "  -output       Specify the output directory for the automated test run. If\n"
-    "                this is specified, you also need to specify -disp and -step.\n";
-    "  -ray          Use raymarching.\n";
+    "                this is specified, you also need to specify -disp and -step.\n"
+    "  -ray          Use raymarching instead of mesh-based reprojection.\n"
+    "  -axis         Generate test points only along view-aligned axes\n";
 
     bool doTestRun = false;
     bool useRay = false;
-    bool singleAxis = false;
+    bool axisMode = false;
     double displacement = 0;
     double stepSize = 0;
     size_t meshSize = 512;
@@ -49,9 +50,9 @@ int main(int argc, char *argv[]) {
             useRay = true;
         }
 
-        if(args[i].rfind("-singleaxis") == 0){
+        if(args[i].rfind("-axis") == 0){
             doTestRun = true;
-            singleAxis = true;
+            axisMode = true;
         }
 
         if(args[i].rfind("-mesh") == 0){
@@ -101,13 +102,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // if((displacement == 0 || stepSize == 0) && doTestRun)
-    //     throw std::runtime_error("Usage: Neither stepSize nor displacement can be zero, if test run.");
-
     OpenwarpApplication app = OpenwarpApplication(meshSize);
 
     if(doTestRun) {
-        TestRun test = TestRun(displacement, stepSize, outputDir, useRay, singleAxis);
+        TestRun test = TestRun(displacement, stepSize, outputDir, useRay, axisMode);
         std::cout << "Running automated test. " << test.GetNumPoints() << " poses to run." << std::endl;
         app.DoFullTestRun(test);
     } else {

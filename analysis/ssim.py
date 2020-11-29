@@ -126,9 +126,10 @@ def crop_center(img, edge):
        print("Bounds: " + str(startx) + ', ' + str(starty) + ', ' + str(endx) + ', ' + str(endy))
        return img[starty:endy, startx:endx, :]
 
-parser = argparse.ArgumentParser(description='Perform automated SSIM analysis of Openwarp output.')
+parser = argparse.ArgumentParser(description='Perform automated image similarity analysis of Openwarp output. Uses Nvidia FLIP pooled deltaE, unless --ssim is specified.')
 parser.add_argument('displacement', help='Maximum displacement from the rendered pose to reproject')
 parser.add_argument('stepSize', help='Distance between each analyzed reprojected frame in 3D space (i.e., the size of each step)')
+parser.add_argument('--ssim', action="store_true", help="Use SSIM instead of Nvidia FLIP pooled DeltaE")
 parser.add_argument('--norun', action="store_true", help='Do not run Openwarp; instead, use the latest previous run')
 parser.add_argument('--usecache', action="store_true", help='Do not run SSIM analysis; instead, use cached SSIM data from a previous analysis run')
 parser.add_argument('--single', action="store_true", help='Run on single frame, return SSIM image')
@@ -282,11 +283,14 @@ if args.graph:
     midpoint = len(X)//2
 
     fig=plt.figure()
-    # plt.plot(range(len(X)), V[:,midpoint,midpoint], 'r')
-    # plt.plot(range(len(X)), V[midpoint,:,midpoint], 'g')
-    plt.plot(range(len(X)), V[midpoint,midpoint,:], 'b')
+    plt.plot(np.arange(len(X)) * step - disp, V[:,midpoint,midpoint], 'r', label="deltaE along x-axis")
+    plt.plot(np.arange(len(X)) * step - disp, V[midpoint,:,midpoint], 'g', label="deltaE along y-axis")
+    plt.plot(np.arange(len(X)) * step - disp, V[midpoint,midpoint,:], 'b', label="deltaE along z-axis")
+    plt.legend()
     # plt.plot(range(len(Y)), V[0,:,0])
     # plt.plot(range(len(Z)), V[0,0,:])
+    plt.xlabel('Per-axis displacement of reprojection')
+    plt.ylabel('Nvidia FLIP pooled DeltaE')
     plt.show()
     sys.exit()
 

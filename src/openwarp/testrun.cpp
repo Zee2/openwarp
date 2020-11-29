@@ -10,35 +10,37 @@ TestRun::TestRun() : outputDir("../output"), useRay(false) {
     // Empty. No test data requested.
 }
 
-TestRun::TestRun(double displacement, double stepSize, std::string outputDir, bool useRay, bool singleAxis, Eigen::Vector3f axis,
+TestRun::TestRun(double displacement, double stepSize, std::string outputDir, bool useRay, bool axisMode,
                 Eigen::Vector3f startPos,
                 Eigen::Quaternionf startOrientation)
                  : startPose(pose_t { startPos, Eigen::Vector3f(0,0,0), startOrientation}), outputDir(outputDir), useRay(useRay) {
-                    
-    if(stepSize == 0) {
-        // First, the origin/non-displaced pose
-        testPoses.push_back(pose_t {
-            startPos + (startOrientation * (0 * axis)),
-            0 * axis,
-            Quaternionf::Identity() * startOrientation});
-
-        // Single displacement
-        testPoses.push_back(pose_t {
-            startPos + (startOrientation * (displacement * axis)),
-            displacement * axis,
-            Quaternionf::Identity() * startOrientation});
-
-        return;
-    }
 
     int num_steps = round(displacement/stepSize);
 
-    if(singleAxis) {
-        
+    if(axisMode) {
+
+        testPoses.push_back(pose_t {
+            startPos + (startOrientation * Vector3f::Zero()),
+            Vector3f::Zero(),
+            Quaternionf::Identity() * startOrientation});
+
+        Vector3f axis = Vector3f::UnitX();
+
         for(int i = -num_steps; i <= num_steps; i++){
+            if(i == 0) continue;
             testPoses.push_back(pose_t {
-                startPos + (startOrientation * (i*stepSize * axis)),
-                i*stepSize * axis,
+                startPos + (startOrientation * (i*stepSize * Vector3f::UnitX())),
+                i*stepSize * Vector3f::UnitX(),
+                Quaternionf::Identity() * startOrientation});
+
+            testPoses.push_back(pose_t {
+                startPos + (startOrientation * (i*stepSize * Vector3f::UnitY())),
+                i*stepSize * Vector3f::UnitY(),
+                Quaternionf::Identity() * startOrientation});
+            
+            testPoses.push_back(pose_t {
+                startPos + (startOrientation * (i*stepSize * Vector3f::UnitZ())),
+                i*stepSize * Vector3f::UnitZ(),
                 Quaternionf::Identity() * startOrientation});
         }
         return;
