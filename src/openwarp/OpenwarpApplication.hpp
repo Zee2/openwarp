@@ -154,12 +154,8 @@ class Openwarp::OpenwarpApplication{
             GLint eye_sampler;
             GLint depth_sampler;
 
-            GLuint u_renderP;
-            GLuint u_renderV;
-            GLuint u_renderInverseP;
-            GLuint u_renderInverseV;
-            GLuint u_warpInverseP;
-            GLuint u_warpInverseV;
+            GLuint u_renderPV;
+            GLuint u_warpInverseVP;
 
             GLuint u_warpPos;
 

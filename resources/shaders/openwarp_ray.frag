@@ -36,12 +36,8 @@ layout(binding = 2) uniform highp sampler2D _Depth;
 
 uniform lowp float u_debugOpacity;
 
-uniform highp mat4x4 u_renderP;
-uniform highp mat4x4 u_renderV;
-uniform highp mat4x4 u_renderInverseP;
-uniform highp mat4x4 u_renderInverseV;
-uniform highp mat4x4 u_warpInverseP;
-uniform highp mat4x4 u_warpInverseV;
+uniform highp mat4x4 u_warpInverseVP;
+uniform highp mat4x4 u_renderPV;
 
 uniform mediump vec3 u_warpPos;
 
@@ -56,10 +52,9 @@ in mediump vec2 warpUv;
 out mediump vec4 outColor;
 
 
-vec3 ndcFromWorld(vec4 worldCoords, mat4x4 V, mat4x4 P){
-    vec4 clipSpacePosition = P * V * worldCoords;
+vec3 ndcFromWorld(vec4 worldCoords, mat4x4 PV){
+    vec4 clipSpacePosition = PV * worldCoords;
     clipSpacePosition /= clipSpacePosition.w;
-
     return clipSpacePosition.xyz;
 }
 
@@ -72,7 +67,7 @@ void main()
     float counter = 0.01;
     int iter = 0;
 
-    vec4 V_worldspace = u_warpInverseV * u_warpInverseP * vec4(warpUv * 2.0 - 1.0, 1.0, 1);
+    vec4 V_worldspace = u_warpInverseVP * vec4(warpUv * 2.0 - 1.0, 1.0, 1);
     vec4 marchingPoint_worldspace = vec4(u_warpPos,1) + V_worldspace;
 
     vec3 ndc;
@@ -90,13 +85,13 @@ void main()
 
 
     vec4 color = texture(Texture,warpUv);
-    vec3 og_ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
+    vec3 og_ndc = ndcFromWorld(marchingPoint_worldspace, u_renderPV);
 
     // Adjust iterations here, to taste.
     for(; iter < 32; iter++){
         
         // We calculate the point in the old pose's NDC space.
-        ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
+        ndc = ndcFromWorld(marchingPoint_worldspace, u_renderPV);
 
         calcDepth = LinearEyeDepth(texture(_Depth,(ndc.xy + 1.) * 0.5).r, 0.1, 100);
         marchDepth = LinearEyeDepth((ndc.z + 1.0) * 0.5, 0.1, 100);
@@ -115,7 +110,7 @@ void main()
     // Occlusion hole-filling.
     float occlusionFactor = step(u_occlusionThreshold, abs(delta));
     marchingPoint_worldspace -= V_worldspace * occlusionFactor * u_occlusionOffset;
-    ndc = ndcFromWorld(marchingPoint_worldspace, u_renderV, u_renderP);
+    ndc = ndcFromWorld(marchingPoint_worldspace, u_renderPV);
     color = mix(color,texture(Texture,(ndc.xy + 1)*0.5),occlusionFactor);
     outColor = color;
 }

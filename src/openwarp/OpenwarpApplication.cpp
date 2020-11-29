@@ -371,17 +371,16 @@ void OpenwarpApplication::doReprojection(bool useRay){
         glUseProgram(rayProgram.program);
 
         // Upload matrices of the rendered frame.
-        glUniformMatrix4fv(rayProgram.u_renderInverseV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.data()));
-        glUniformMatrix4fv(rayProgram.u_renderV, 1, GL_FALSE, (GLfloat*)(renderedCameraMatrix.inverse().eval().data()));
+        glUniformMatrix4fv(rayProgram.u_renderPV, 1, GL_FALSE, (GLfloat*)((projection * renderedCameraMatrix.inverse()).eval().data()));
 
         glUniform3fv(rayProgram.u_warpPos, 1, position.data());
         // Calculate a fresh camera matrix.
         auto freshCameraMatrix = createCameraMatrix(position, orientation);
 
         // Compute VP matrix for fresh pose.
-        auto freshVP = projection * freshCameraMatrix.inverse();
+        // auto freshVP = projection * freshCameraMatrix.inverse();
 
-        glUniformMatrix4fv(rayProgram.u_warpInverseV, 1, GL_FALSE, (GLfloat*)(freshCameraMatrix.data()));
+        glUniformMatrix4fv(rayProgram.u_warpInverseVP, 1, GL_FALSE, (GLfloat*)((freshCameraMatrix * projection.inverse()).eval().data()));
 
         // Uploade parameter/config uniforms
         glUniform1f(rayProgram.u_power, rayPower);
@@ -575,12 +574,8 @@ int OpenwarpApplication::initGL(){
 
     // Get the warp matrix uniforms
     // Inverse V and P matrices of the rendered pose
-    rayProgram.u_renderInverseP = glGetUniformLocation(rayProgram.program, "u_renderInverseP");
-    rayProgram.u_renderInverseV = glGetUniformLocation(rayProgram.program, "u_renderInverseV");
-    rayProgram.u_renderP = glGetUniformLocation(rayProgram.program, "u_renderP");
-    rayProgram.u_renderV = glGetUniformLocation(rayProgram.program, "u_renderV");
-    rayProgram.u_warpInverseP = glGetUniformLocation(rayProgram.program, "u_warpInverseP");
-    rayProgram.u_warpInverseV = glGetUniformLocation(rayProgram.program, "u_warpInverseV");
+    rayProgram.u_renderPV = glGetUniformLocation(rayProgram.program, "u_renderPV");
+    rayProgram.u_warpInverseVP = glGetUniformLocation(rayProgram.program, "u_warpInverseVP");
     rayProgram.u_warpPos = glGetUniformLocation(rayProgram.program, "u_warpPos");
 
     rayProgram.u_power = glGetUniformLocation(rayProgram.program, "u_power");
@@ -609,9 +604,6 @@ int OpenwarpApplication::initGL(){
     glUseProgram(meshProgram.program);
     glUniformMatrix4fv(meshProgram.u_renderInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
     glUseProgram(rayProgram.program);
-    glUniformMatrix4fv(rayProgram.u_renderInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
-    glUniformMatrix4fv(rayProgram.u_renderP, 1, GL_FALSE, (GLfloat*)(projection.data()));
-    glUniformMatrix4fv(rayProgram.u_warpInverseP, 1, GL_FALSE, (GLfloat*)(projection.inverse().eval().data()));
     glUseProgram(0);
 
     return 0;
