@@ -62,6 +62,12 @@ void main( void )
 							textureLod(_Depth, in_uv + vec2(0,bleedRadius), 0).x  
 					  )
 					);
+
+	float diags = min(textureLod(_Depth, in_uv + sqrt(2) * vec2(bleedRadius,bleedRadius), 0).x,
+				textureLod(_Depth, in_uv - sqrt(2) * vec2(bleedRadius,bleedRadius), 0).x);
+
+	outlier = min(diags, outlier);
+
 	outlier = outlier * 2.0 - 1.0;
 	if(z - outlier > edgeTolerance){
 		z = outlier;

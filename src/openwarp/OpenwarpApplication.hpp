@@ -344,9 +344,6 @@ class Openwarp::OpenwarpApplication{
                 for (size_t x = 0; x < width + 1; x++){
 
                     size_t index = y * ( width + 1 ) + x;
-                    // vertices[index].position[0] = ( -1.0f + 2.0f * ( (float)x / width ) );
-                    // vertices[index].position[1] = ( -1.0f + 2.0f * ( ( height - (float)y ) / height ));
-                    // vertices[index].position[2] = 0.0f;
 
                     vertices[index].uv[0] = ((float)x / width);
                     vertices[index].uv[1] = ((( height - (float)y) / height));

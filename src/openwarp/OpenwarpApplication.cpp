@@ -78,7 +78,7 @@ OpenwarpApplication::OpenwarpApplication(size_t meshSize){
 
     meshWidth = meshHeight = meshSize;
     // Adjust meshwarp bleed radius according to mesh size.
-    bleedRadius = (1.0f/(meshWidth)) + 0.002f;
+    bleedRadius = (1.0f/(meshWidth));
 
     initGL();
 }
