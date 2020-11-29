@@ -31,13 +31,13 @@ class Openwarp::OpenwarpApplication{
     const uint32_t HEIGHT = 1024;
 
     public:
-        OpenwarpApplication(size_t meshSize = 1024);
+        OpenwarpApplication(size_t meshSize = 512);
         ~OpenwarpApplication();
 
         void Run(bool showGUI);
 
         void DoFullTestRun(const TestRun& testRun);
-        void RunTest(const TestRun& testRun, std::string runDir, bool isGroundTruth, bool testUsesRay);
+        void RunTest(const TestRun& testRun, std::string runDir, bool isGroundTruth);
 
         static OpenwarpApplication* instance;
 

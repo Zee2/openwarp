@@ -118,13 +118,13 @@ void OpenwarpApplication::DoFullTestRun(const TestRun& testRun) {
     fs::create_directory(runDir + "/ground_truth");
 
     // Render and write reprojected frames
-    RunTest(testRun, runDir + "/warped", false, false);
+    RunTest(testRun, runDir + "/warped", false);
 
     // Render and write ground truth frames
-    RunTest(testRun, runDir + "/ground_truth", true, false);
+    RunTest(testRun, runDir + "/ground_truth", true);
 }
 
-void OpenwarpApplication::RunTest(const TestRun& testRun, std::string runDir, bool isGroundTruth, bool testUsesRay){
+void OpenwarpApplication::RunTest(const TestRun& testRun, std::string runDir, bool isGroundTruth){
 
     // For GL_RGB8
     GLubyte* fb_data = (GLubyte*)malloc(WIDTH * HEIGHT * 3);
@@ -159,7 +159,7 @@ void OpenwarpApplication::RunTest(const TestRun& testRun, std::string runDir, bo
         if (isGroundTruth)
             renderScene();
         else
-            doReprojection(testUsesRay);
+            doReprojection(testRun.useRay);
 
         // Read pixels out from the screen.
         glReadPixels(0, 0, WIDTH, HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, fb_data);

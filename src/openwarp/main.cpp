@@ -22,11 +22,14 @@ int main(int argc, char *argv[]) {
     "                specified, you also need to specify -disp.\n"
     "  -output       Specify the output directory for the automated test run. If\n"
     "                this is specified, you also need to specify -disp and -step.\n";
+    "  -ray          Use raymarching.\n";
 
     bool doTestRun = false;
-    float displacement = 0;
-    float stepSize = 0;
-    size_t meshSize = 1024;
+    bool useRay = false;
+    bool singleAxis = false;
+    double displacement = 0;
+    double stepSize = 0;
+    size_t meshSize = 512;
     bool showGUI = true;
     std::string outputDir = "../output";
 
@@ -39,6 +42,16 @@ int main(int argc, char *argv[]) {
 
         if(args[i].rfind("-nogui") == 0){
             showGUI = false;
+        }
+
+        if(args[i].rfind("-ray") == 0){
+            doTestRun = true;
+            useRay = true;
+        }
+
+        if(args[i].rfind("-singleaxis") == 0){
+            doTestRun = true;
+            singleAxis = true;
         }
 
         if(args[i].rfind("-mesh") == 0){
@@ -88,13 +101,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if((displacement == 0 || stepSize == 0) && doTestRun)
-        throw std::runtime_error("Usage: Neither stepSize nor displacement can be zero, if provided.");
+    // if((displacement == 0 || stepSize == 0) && doTestRun)
+    //     throw std::runtime_error("Usage: Neither stepSize nor displacement can be zero, if test run.");
 
     OpenwarpApplication app = OpenwarpApplication(meshSize);
 
     if(doTestRun) {
-        TestRun test = TestRun(displacement, stepSize, outputDir);
+        TestRun test = TestRun(displacement, stepSize, outputDir, useRay, singleAxis);
         std::cout << "Running automated test. " << test.GetNumPoints() << " poses to run." << std::endl;
         app.DoFullTestRun(test);
     } else {

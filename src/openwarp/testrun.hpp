@@ -10,12 +10,16 @@ namespace Openwarp {
 
         public:
             TestRun();
-            TestRun(float displacement, float stepSize, std::string outputDir = "../output",
-                Eigen::Vector3f startPos = Eigen::Vector3f{-3,1.5,2},
-                Eigen::Quaternionf startOrientation = Eigen::AngleAxisf(-M_PI/4, Eigen::Vector3f::UnitY())
+            TestRun(double displacement, double stepSize, std::string outputDir = "../output", bool useRay=false, bool singleAxis = false, Eigen::Vector3f axis = Eigen::Vector3f::UnitX(),
+                Eigen::Vector3f startPos = Eigen::Vector3f{1.3,1.5,2.2},
+                Eigen::Quaternionf startOrientation =   
+                                                    Eigen::AngleAxisf(M_PI/8, Eigen::Vector3f::UnitY())
+                                                    * Eigen::AngleAxisf(-M_PI/10, Eigen::Vector3f::UnitX())
+                                                    
                                                     * Eigen::Quaternionf::Identity());
 
             const pose_t startPose;
+            const bool useRay;
             const std::string outputDir;
 
             size_t GetNumPoints() { return testPoses.size(); }

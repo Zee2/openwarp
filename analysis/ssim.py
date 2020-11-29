@@ -11,8 +11,19 @@ import imageio
 from mayavi import mlab
 import _pickle
 import concurrent.futures as fut
+import sys
+import math
+
+import scipy.stats as stats
+
+from flip import compute_flip
+from utils import *
+
+import wquantiles
 
 import ipyvolume as ipv
+
+from scipy.sparse import csr_matrix
 
 def getDisplacement(filename, origin):
     nums = np.array(filename.replace('.png', '').split('_')).astype(np.float)
@@ -29,21 +40,99 @@ def run_ssim(truth, warp):
     ssim_warp,ssim_image = ssim(img, warp_img,
                     data_range=(warp_img.max() - warp_img.min()), multichannel=True, full=True)
 
-    return ssim_warp
+    return ssim_warp, ssim_image
 
 def ssim_thread(filename):
     vector = filename.replace('.png', '').split('_')
     truth_img = imageio.imread("ground_truth/" + filename)
     warp_img = imageio.imread("warped/" + filename)
-    ssim_result = run_ssim(truth_img,warp_img)
+    ssim_result,_ = run_ssim(truth_img,warp_img)
+    vector = [float(i) for i in vector]
+    print("SSIM for " + str(vector) + ": " + str(ssim_result));
 
-    return ([float(i) for i in vector], ssim_result)
+    return ([vector, ssim_result])
+
+# https://stackoverflow.com/a/26888164/3234070
+def binned_statistic(x, values, func, nbins, range):
+    '''The usage is nearly the same as scipy.stats.binned_statistic''' 
+
+    N = len(values)
+    r0, r1 = range
+
+    digitized = (float(nbins)/(r1 - r0)*(x - r0)).astype(int)
+    S = csr_matrix((values, [digitized, np.arange(N)]), shape=(nbins, N))
+
+    return [func(group) for group in np.split(S.data, S.indptr[1:-1])]
+
+def FLIP_thread(filename):
+    result,_ = FLIP(filename, filename)
+    return result
+
+def FLIP(truth,warp):
+    vector = truth.replace('.png', '').split('_')
+    vector = [float(i) for i in vector]
+    truth_img = load_image_array("ground_truth/" + truth)
+    warp_img = load_image_array("warped/" + warp)
+
+    pixels_wide = len(truth_img[0])
+    fov = 90
+    pixels_per_degree = pixels_wide / fov
+
+    deltaE = compute_flip(truth_img, warp_img, pixels_per_degree)
+
+    # fig=plt.figure()
+    # plt.imshow(deltaE.squeeze(0))
+    # plt.show()
+
+    flatDeltaE = deltaE.flatten()
+
+    print("Computing histogram for " + str(vector))
+    histogram, edges = np.histogram(deltaE, bins=100, range=(0,0.9))
+    print("Computing median of each bin for " + str(vector))
+    medians_of_bins,_,_ = stats.binned_statistic(flatDeltaE, flatDeltaE, bins=100, statistic='median', range=(0,0.9))
+    print("Weighting histogram bins for " + str(vector))
+
+    weightedHistogram = np.empty(histogram.shape[0], dtype=float)
+    megapixels = (pixels_wide ** 2) / 1000000
+
+    for i in range(len(histogram)):
+
+        # Empty bin
+        if(math.isnan(medians_of_bins[i])):
+            medians_of_bins[i] = 0
+
+        weightedHistogram[i] = float(histogram[i]) * float(medians_of_bins[i])
+    
+
+    median = wquantiles.median(medians_of_bins, weightedHistogram)
+    trueMedian = np.median(flatDeltaE)
+
+    print("Width: " + str(pixels_wide) + ", PPD: " + str(pixels_per_degree) + ", megapixels: " + str(megapixels) + ", deltaE histogram median for " + str(vector) + ": " + str(median) + ", true median: " + str(trueMedian));
+
+    # plt.plot(medians_of_bins, weightedHistogram)
+    # plt.axvline(x=median)
+    # plt.show()
+    return [vector,median], deltaE.squeeze(0)
+
+
+
+def crop_center(img, edge):
+       y, x, _ = img.shape
+       startx = edge
+       starty = edge
+       endx = x - edge
+       endy = y - edge
+
+       print("Bounds: " + str(startx) + ', ' + str(starty) + ', ' + str(endx) + ', ' + str(endy))
+       return img[starty:endy, startx:endx, :]
 
 parser = argparse.ArgumentParser(description='Perform automated SSIM analysis of Openwarp output.')
 parser.add_argument('displacement', help='Maximum displacement from the rendered pose to reproject')
 parser.add_argument('stepSize', help='Distance between each analyzed reprojected frame in 3D space (i.e., the size of each step)')
 parser.add_argument('--norun', action="store_true", help='Do not run Openwarp; instead, use the latest previous run')
 parser.add_argument('--usecache', action="store_true", help='Do not run SSIM analysis; instead, use cached SSIM data from a previous analysis run')
+parser.add_argument('--single', action="store_true", help='Run on single frame, return SSIM image')
+parser.add_argument('--graph', action="store_true", help="Graph SSIM on a flat chart instead of 3D volume")
 
 args = parser.parse_args()
 
@@ -71,7 +160,56 @@ print("Run origin: " + str(origin))
 ground_truth_files = os.listdir("./ground_truth/")
 warp_files = os.listdir("./warped/")
 
+
 # print("Ground truth files: " + str(ground_truth_files))
+
+
+if args.single:
+
+    fig=plt.figure(figsize=(20, 20))
+
+    for gt in ground_truth_files:
+        vector = gt.replace('.png', '').split('_')
+        if [float(i) for i in vector] == [0,0,0]:
+            reference = gt
+    
+    targetWarp = warp_files[0]
+
+    truth_img = imageio.imread("ground_truth/" + targetWarp)
+    ref_image = imageio.imread("ground_truth/" + gt)
+    warp_img = imageio.imread("warped/" + targetWarp)
+
+    # truth_img = crop_center(truth_img, 100)
+    # ref_image = crop_center(ref_image, 100)
+    # warp_img = crop_center(warp_img, 100)
+
+    flip_result, flip_image = FLIP(targetWarp, targetWarp)
+    ssim_result, ssim_image = run_ssim(truth_img,warp_img)
+
+    nowarp_ssim_result, nowarp_ssim_image = run_ssim(truth_img,ref_image)
+    nowarp_flip_result, nowarp_flip_image = FLIP(targetWarp,gt)
+
+
+    ax1 = fig.add_subplot(2,2,1)
+    ax1.title.set_text("SSIM comparison, without reprojection")
+    ax1.set(xlabel="SSIM: " + str(nowarp_ssim_result))
+    plt.imshow(nowarp_ssim_image)
+    ax2 = fig.add_subplot(2,2,2)
+    ax2.set(xlabel="SSIM: " + str(ssim_result))
+    ax2.title.set_text("SSIM comparison, reprojection enabled")
+    plt.imshow(ssim_image)
+
+    ax1 = fig.add_subplot(2,2,3)
+    ax1.title.set_text("Nvidia FLIP comparison, without reprojection")
+    ax1.set(xlabel="FLIP pooled deltaE: " + str(nowarp_flip_result))
+    plt.imshow(nowarp_flip_image)
+    ax2 = fig.add_subplot(2,2,4)
+    ax2.set(xlabel="FLIP pooled deltaE: " + str(flip_result))
+    ax2.title.set_text("Nvidia FLIP comparison, reprojection enabled")
+    plt.imshow(flip_image)
+    
+    plt.show()
+    sys.exit()
 
 run_data = []
 
@@ -82,7 +220,7 @@ if args.usecache:
 else:
 
     with fut.ThreadPoolExecutor(max_workers=8) as executor:
-        results = executor.map(ssim_thread, ground_truth_files)
+        results = executor.map(FLIP_thread, ground_truth_files)
         for result in results:
             run_data.append(result)
         # run_data[0].result()
@@ -125,6 +263,8 @@ num_steps = int(num_steps)
 #     ))
 # fig.show()
 
+
+
 X, Y, Z = np.mgrid[-disp:disp:1j * num_steps, -disp:disp:1j * num_steps, -disp:disp:1j * num_steps]
 values = np.ndarray((num_steps, num_steps, num_steps), dtype=float)
 
@@ -134,7 +274,21 @@ for d in run_data:
     x = int((d[0][0] + disp)/float(args.stepSize))
     y = int((d[0][1] + disp)/float(args.stepSize))
     z = int((d[0][2] + disp)/float(args.stepSize))
+    print("Putting " + str(d[0]) + " into " + str([x,y,z]))
     V[x,y,z] = d[1]
+
+if args.graph:
+    
+    midpoint = len(X)//2
+
+    fig=plt.figure()
+    # plt.plot(range(len(X)), V[:,midpoint,midpoint], 'r')
+    # plt.plot(range(len(X)), V[midpoint,:,midpoint], 'g')
+    plt.plot(range(len(X)), V[midpoint,midpoint,:], 'b')
+    # plt.plot(range(len(Y)), V[0,:,0])
+    # plt.plot(range(len(Z)), V[0,0,:])
+    plt.show()
+    sys.exit()
 
 ipv.figure()
 ipv.volshow(V, level=[0.25, 0.75], opacity=0.03, level_width=0.1, data_min=0.7, data_max=1)
