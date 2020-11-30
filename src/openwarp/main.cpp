@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
         }
 
         if(args[i].rfind("-ray") == 0){
-            doTestRun = true;
+            //doTestRun = true;
             useRay = true;
         }
 
@@ -109,6 +109,6 @@ int main(int argc, char *argv[]) {
         std::cout << "Running automated test. " << test.GetNumPoints() << " poses to run." << std::endl;
         app.DoFullTestRun(test);
     } else {
-        app.Run(showGUI);
+        app.Run(showGUI, useRay);
     }
 }

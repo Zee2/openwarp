@@ -181,7 +181,10 @@ void OpenwarpApplication::RunTest(const TestRun& testRun, std::string runDir, bo
     }
 }
 
-void OpenwarpApplication::Run(bool showGUI){
+void OpenwarpApplication::Run(bool showGUI, bool useRay){
+
+    useRay = useRay;
+
     while(!glfwWindowShouldClose(window)) {
 
         glfwPollEvents();

@@ -301,6 +301,16 @@ for d in run_data:
     V[x,y,z] = d[1]
 
 if args.graph:
+
+    flattened = [d[1] for d in run_data]
+
+    total_mean = np.mean(flattened)
+    total_median = np.median(flattened)
+    total_stdev = np.std(flattened)
+
+    print("Mean: " + str(total_mean))
+    print("Median: " + str(total_median))
+    print("stdev: " + str(total_stdev))
     
     midpoint = len(X)//2
 
