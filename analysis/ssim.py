@@ -2,6 +2,7 @@ import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from mpl_toolkits.mplot3d import Axes3D
 import plotly.graph_objects as go
 from skimage import data, img_as_float
@@ -127,27 +128,33 @@ def crop_center(img, edge):
        return img[starty:endy, startx:endx, :]
 
 parser = argparse.ArgumentParser(description='Perform automated image similarity analysis of Openwarp output. Uses Nvidia FLIP pooled deltaE, unless --ssim is specified.')
-parser.add_argument('displacement', help='Maximum displacement from the rendered pose to reproject')
-parser.add_argument('stepSize', help='Distance between each analyzed reprojected frame in 3D space (i.e., the size of each step)')
+parser.add_argument('--disp', nargs='?', default=None, help='Maximum displacement from the rendered pose to reproject')
+parser.add_argument('--stepSize', nargs='?', default=None, help='Distance between each analyzed reprojected frame in 3D space (i.e., the size of each step)')
 parser.add_argument('--ssim', action="store_true", help="Use SSIM instead of Nvidia FLIP pooled DeltaE")
 parser.add_argument('--norun', action="store_true", help='Do not run Openwarp; instead, use the latest previous run')
 parser.add_argument('--usecache', action="store_true", help='Do not run SSIM analysis; instead, use cached SSIM data from a previous analysis run')
 parser.add_argument('--single', action="store_true", help='Run on single frame, return SSIM image')
 parser.add_argument('--graph', action="store_true", help="Graph SSIM on a flat chart instead of 3D volume")
+parser.add_argument('--dir', nargs='?', default=None, help="Use a specific output directory")
 
 args = parser.parse_args()
+
+assert(not (args.dir is not None and args.norun == False))
 
 orig_dir = os.getcwd()
 
 if not args.norun:
     os.chdir('../build')
-    os.system('make && ./openwarp -disp ' + isplacement + ' -step ' + stepSize);
+    os.system('make && ./openwarp -disp ' + displacement + ' -step ' + stepSize);
     os.chdir('../analysis')
 
 os.chdir('../output')
 
-run_dirs = [d for d in os.listdir('.') if os.path.isdir(d)]
-latest_run = max(run_dirs, key=os.path.getmtime);
+if args.dir is None:
+    run_dirs = [d for d in os.listdir('.') if os.path.isdir(d)]
+    latest_run = max(run_dirs, key=os.path.getmtime);
+else:
+    latest_run = args.dir
 
 print("Using run: " + latest_run)
 
@@ -155,8 +162,16 @@ os.chdir(latest_run)
 
 run_info = open("run_info.txt")
 origin = np.array(run_info.readline().split("_")).astype(np.float)
+dispData = run_info.readline().split(" ")
+disp = dispData[1].rstrip()
+step = dispData[2].rstrip()
+run_info.readline()
+reprojection_type = run_info.readline().split(" ")[2].rstrip()
+mesh_res = run_info.readline().split(" ")[2].rstrip()
 run_info.close()
 print("Run origin: " + str(origin))
+print("Mesh res: " + str(mesh_res))
+print("Repro type: " + str(reprojection_type))
 
 ground_truth_files = os.listdir("./ground_truth/")
 warp_files = os.listdir("./warped/")
@@ -169,12 +184,19 @@ if args.single:
 
     fig=plt.figure(figsize=(20, 20))
 
+    target = [0.1,0,0]
+
     for gt in ground_truth_files:
         vector = gt.replace('.png', '').split('_')
         if [float(i) for i in vector] == [0,0,0]:
             reference = gt
+
+    for w in warp_files:
+        vector = w.replace('.png', '').split('_')
+        if [float(i) for i in vector] == target:
+            targetWarp = w
     
-    targetWarp = warp_files[0]
+    # targetWarp = warp_files[0]
 
     truth_img = imageio.imread("ground_truth/" + targetWarp)
     ref_image = imageio.imread("ground_truth/" + gt)
@@ -241,9 +263,9 @@ cache.close()
 
 # print(vectors)
 
-disp = float(args.displacement)
-num_steps = ((2.0 * disp) / float(args.stepSize) + 1.0)
-step = float(args.stepSize)
+disp = float(disp)
+step = float(step)
+num_steps = ((2.0 * disp) / step + 1.0)
 
 assert(int(num_steps) == num_steps)
 print("Num steps: " + str(num_steps))
@@ -272,25 +294,31 @@ values = np.ndarray((num_steps, num_steps, num_steps), dtype=float)
 V = np.zeros((num_steps, num_steps, num_steps))
 
 for d in run_data:
-    x = int((d[0][0] + disp)/float(args.stepSize))
-    y = int((d[0][1] + disp)/float(args.stepSize))
-    z = int((d[0][2] + disp)/float(args.stepSize))
-    print("Putting " + str(d[0]) + " into " + str([x,y,z]))
+    x = int((d[0][0] + disp)/step)
+    y = int((d[0][1] + disp)/step)
+    z = int((d[0][2] + disp)/step)
+    # print("Putting " + str(d[0]) + " into " + str([x,y,z]))
     V[x,y,z] = d[1]
 
 if args.graph:
     
     midpoint = len(X)//2
 
-    fig=plt.figure()
-    plt.plot(np.arange(len(X)) * step - disp, V[:,midpoint,midpoint], 'r', label="deltaE along x-axis")
-    plt.plot(np.arange(len(X)) * step - disp, V[midpoint,:,midpoint], 'g', label="deltaE along y-axis")
-    plt.plot(np.arange(len(X)) * step - disp, V[midpoint,midpoint,:], 'b', label="deltaE along z-axis")
+    fig, ax=plt.subplots(1,1)
+    if(reprojection_type == "Mesh"):
+        ax.set_title('Mesh-based, ' + str(mesh_res) + 'x' + str(mesh_res) + " mesh, max displacement " + str(disp) + 'm')
+    else:
+        ax.set_title('Raymarch-based, max displacement ' + str(disp) + 'm')
+    ax.plot(np.arange(len(X)) * step - disp, V[:,midpoint,midpoint], 'r', label=r"$\Delta E$ along x-axis")
+    ax.plot(np.arange(len(X)) * step - disp, V[midpoint,:,midpoint], 'g', label=r"$\Delta E$ along y-axis")
+    ax.plot(np.arange(len(X)) * step - disp, V[midpoint,midpoint,:], 'b', label=r"$\Delta E$ along z-axis")
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(0.02))
+
     plt.legend()
     # plt.plot(range(len(Y)), V[0,:,0])
     # plt.plot(range(len(Z)), V[0,0,:])
-    plt.xlabel('Per-axis displacement of reprojection')
-    plt.ylabel('Nvidia FLIP pooled DeltaE')
+    plt.xlabel('Per-axis displacement of reprojection (m)')
+    plt.ylabel(r'Nvidia FLIP pooled $\Delta E$')
     plt.show()
     sys.exit()
 

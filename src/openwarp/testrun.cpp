@@ -5,7 +5,7 @@
 using namespace Openwarp;
 using namespace Eigen;
 
-TestRun::TestRun() : outputDir("../output"), useRay(false) {
+TestRun::TestRun() : outputDir("../output"), useRay(false), displacement(0), stepSize(0) {
     std::cout << "Default constructor" << std::endl;
     // Empty. No test data requested.
 }
@@ -13,7 +13,8 @@ TestRun::TestRun() : outputDir("../output"), useRay(false) {
 TestRun::TestRun(double displacement, double stepSize, std::string outputDir, bool useRay, bool axisMode,
                 Eigen::Vector3f startPos,
                 Eigen::Quaternionf startOrientation)
-                 : startPose(pose_t { startPos, Eigen::Vector3f(0,0,0), startOrientation}), outputDir(outputDir), useRay(useRay) {
+                 : startPose(pose_t { startPos, Eigen::Vector3f(0,0,0), startOrientation}), outputDir(outputDir), useRay(useRay),
+                 displacement(displacement), stepSize(stepSize){
 
     int num_steps = round(displacement/stepSize);
 

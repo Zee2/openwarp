@@ -79,6 +79,7 @@ OpenwarpApplication::OpenwarpApplication(size_t meshSize){
     meshWidth = meshHeight = meshSize;
     // Adjust meshwarp bleed radius according to mesh size.
     bleedRadius = (1.0f/(meshWidth));
+    // bleedRadius = (1.0f/(meshWidth)) + 0.001;
 
     initGL();
 }
@@ -110,7 +111,12 @@ void OpenwarpApplication::DoFullTestRun(const TestRun& testRun) {
     // Write the test origin to a file.
     std::ofstream info_file;
     info_file.open(runDir + "/run_info.txt");
-    info_file << origin_tag;
+    info_file << origin_tag << "\n";
+    info_file << "Disp,step: " << testRun.displacement << " " << testRun.stepSize << "\n";
+    info_file << "Origin orientation: " << testRun.startPose.orientation << "\n";
+    info_file << "Reprojection mode: " << (testRun.useRay ? "Raymarch" : "Mesh") << "\n";
+    info_file << "Mesh resolution: " << meshWidth << "\n";
+    info_file << "Render resolution: " << WIDTH << "\n";
     info_file.close();
 
     // Create the ground truth and warp directories
@@ -307,6 +313,7 @@ void OpenwarpApplication::drawGUI(){
             glfwSwapInterval(useVsync ? 1 : 0);
         }
     }
+    ImGui::Text("Pos: %2f,%2f,%2f", position.x(), position.y(), position.z());
     
     
     ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -467,7 +474,7 @@ void OpenwarpApplication::renderScene(){
     glUniformMatrix4fv(demoModelViewAttr, 1, GL_FALSE, (GLfloat*)(renderedView.data()));
     glUniformMatrix4fv(demoProjectionAttr, 1, GL_FALSE, (GLfloat*)(projection.data()));    
 
-    glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     demoscene.Draw();
