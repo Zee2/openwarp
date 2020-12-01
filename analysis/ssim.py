@@ -189,7 +189,7 @@ if args.single:
     for gt in ground_truth_files:
         vector = gt.replace('.png', '').split('_')
         if [float(i) for i in vector] == [0,0,0]:
-            reference = gt
+            origin = gt
 
     for w in warp_files:
         vector = w.replace('.png', '').split('_')
@@ -198,8 +198,8 @@ if args.single:
     
     # targetWarp = warp_files[0]
 
-    truth_img = imageio.imread("ground_truth/" + targetWarp)
-    ref_image = imageio.imread("ground_truth/" + gt)
+    origin_img = imageio.imread("ground_truth/" + origin)
+    ref_image = imageio.imread("ground_truth/" + targetWarp)
     warp_img = imageio.imread("warped/" + targetWarp)
 
     # truth_img = crop_center(truth_img, 100)
@@ -207,11 +207,11 @@ if args.single:
     # warp_img = crop_center(warp_img, 100)
 
     flip_result, flip_image = FLIP(targetWarp, targetWarp)
-    ssim_result, ssim_image = run_ssim(truth_img,warp_img)
+    ssim_result, ssim_image = run_ssim(ref_image,warp_img)
 
-    nowarp_ssim_result, nowarp_ssim_image = run_ssim(truth_img,ref_image)
-    nowarp_flip_result, nowarp_flip_image = FLIP(targetWarp,gt)
-
+    nowarp_ssim_result, nowarp_ssim_image = run_ssim(origin_img,ref_image)
+    nowarp_flip_result, nowarp_flip_image = FLIP(origin,targetWarp)
+ 
 
     ax1 = fig.add_subplot(2,2,1)
     ax1.title.set_text("SSIM comparison, without reprojection")
