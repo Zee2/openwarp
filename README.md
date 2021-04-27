@@ -18,7 +18,7 @@ This project uses CMake, and is properly configured to build on both Linux and W
 ```
 sudo apt-get install xorg-dev libgl-dev
 ```
-Most Ubuntu distributions should include all other dependencies, and Windows should not require any other dependencies. GLEW, GLFW, Eigen, GLM, and IMGUI are all built from source in this project, and are included as git submodules. You'll need to run `git pull --recurse-submodules` to pull them down. Run `cmake .` in the `./build/` directory, and compile with `make`.
+Most Ubuntu distributions should include all other dependencies, and Windows should not require any other dependencies. GLEW, GLFW, Eigen, GLM, and IMGUI are all built from source in this project, and are included as git submodules. You'll need to run `git pull --recurse-submodules` to pull them down. `mkdir` a `./build/` directory, and then run `cmake ..` in that directory and compile with `make`.
 
 ## Demo application
 
